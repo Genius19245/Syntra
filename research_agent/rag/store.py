@@ -145,6 +145,8 @@ class KnowledgeStore:
                 continue
             if not _compatible_level(education_level, doc_level):
                 continue
+            if exam_board and doc_board and exam_board != doc_board:
+                continue
 
             haystack = _tokens(
                 " ".join(

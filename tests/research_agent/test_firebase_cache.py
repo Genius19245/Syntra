@@ -114,6 +114,7 @@ def test_research_agent_exposes_label_prompt():
     assert "label_prompt" in names
     assert [agent.name for agent in research_agent.sub_agents] == [
         "source_researcher",
+        "fact_checker",
     ]
 
 
@@ -126,6 +127,41 @@ def test_retrieve_knowledge_uses_cache_before_seed_files():
     assert result["hit_count"] >= 1
     sources = {hit["metadata"].get("source") for hit in result["hits"]}
     assert sources == {"firestore_cache"}
+
+
+def test_named_exam_board_does_not_return_other_board_cache():
+    cache = ResearchCache(MemoryBackend())
+    cache.store(_package(exam_board="OCR", topic="magnets"))
+    cache.store(_package(exam_board="AQA", topic="magnets"))
+    hits = cache.lookup(
+        "magnets",
+        subject="physics",
+        education_level="GCSE",
+        exam_board="AQA",
+    )
+    boards = {str(hit["metadata"].get("exam_board") or "").lower() for hit in hits}
+    assert "ocr" not in boards
+    assert "aqa" in boards
+
+
+def test_backfill_embeddings_writes_missing_vectors():
+    class FakeEmbedder:
+        def embed_texts(self, texts, *, task_type="RETRIEVAL_DOCUMENT"):
+            return [[0.1, 0.2, 0.3] for _ in texts]
+
+    cache = ResearchCache(MemoryBackend(), embedder=None)
+    stored = cache.store(_package())
+    assert stored["stored"] is True
+    key = stored["prompt_key"]
+    doc = cache.backend.get(key)
+    assert doc is not None
+    doc.pop("embedding", None)
+    cache.backend.docs[key] = doc
+    cache.embedder = FakeEmbedder()
+    result = cache.backfill_embeddings()
+    assert result["success"] is True
+    assert result["updated"] >= 1
+    assert cache.backend.get(key).get("embedding") == [0.1, 0.2, 0.3]
 
 
 def test_retrieve_knowledge_falls_back_to_seed_markdown():

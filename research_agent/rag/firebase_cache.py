@@ -100,6 +100,9 @@ class MemoryBackend:
             return
         doc["hit_count"] = int(doc.get("hit_count") or 0) + 1
 
+    def list_docs(self, limit: int = 400) -> list[dict[str, Any]]:
+        return [dict(doc) for doc in list(self.docs.values())[: max(0, int(limit or 0))]]
+
 
 class FirestoreBackend:
     def __init__(self, client: Any):
@@ -194,6 +197,13 @@ class FirestoreBackend:
         self.collection.document(prompt_key).update(
             {"hit_count": Increment(1), "updated_at": _now()}
         )
+
+    def list_docs(self, limit: int = 400) -> list[dict[str, Any]]:
+        capped = max(1, min(int(limit or 400), 1000))
+        hits: list[dict[str, Any]] = []
+        for snap in self.collection.limit(capped).stream():
+            hits.append(_doc_from_snapshot(snap))
+        return hits
 
 
 def ensure_workspace(workspace_ref: Any) -> None:
@@ -337,6 +347,12 @@ class ResearchCache:
                 continue
             if str(entry.get("freshness") or "") == "TIME_SENSITIVE":
                 continue
+            query_board = str(
+                exam_board or labels.get("exam_board") or ""
+            ).strip().lower()
+            entry_board = str(entry.get("exam_board") or "").strip().lower()
+            if query_board and entry_board and query_board != entry_board:
+                continue
             eligible.append(entry)
         scored: list[tuple[float, dict[str, Any]]] = []
         for entry in eligible:
@@ -410,6 +426,63 @@ class ResearchCache:
             "reason": "Verified research saved to Firestore cache.",
             "prompt_key": labels["prompt_key"],
             "exact": True,
+        }
+
+    def backfill_embeddings(
+        self, *, limit: int = 400, dry_run: bool = False
+    ) -> dict[str, Any]:
+        """Embed cache docs that were stored before vector search existed."""
+        list_docs = getattr(self.backend, "list_docs", None)
+        if not callable(list_docs):
+            return {
+                "success": False,
+                "scanned": 0,
+                "missing": 0,
+                "updated": 0,
+                "reason": "Cache backend cannot list documents.",
+            }
+        docs = list_docs(limit) or []
+        missing = [doc for doc in docs if not as_vector(doc.get("embedding"))]
+        updated = 0
+        skipped = 0
+        for doc in missing:
+            package_data = doc.get("package")
+            if not isinstance(package_data, dict):
+                skipped += 1
+                continue
+            try:
+                package = ResearchPackage.model_validate(package_data)
+            except Exception:
+                skipped += 1
+                continue
+            labels = label_prompt(
+                package.topic,
+                package.subject,
+                package.education_level,
+                package.exam_board,
+            )
+            vector = _document_embedding(package, labels, self.embedder)
+            if not vector:
+                skipped += 1
+                continue
+            if not dry_run:
+                key = str(doc.get("prompt_key") or labels["prompt_key"])
+                self.backend.upsert(
+                    key,
+                    {
+                        "embedding": vector,
+                        "embedding_model": embedding_model_name(),
+                        "updated_at": _now(),
+                    },
+                )
+            updated += 1
+        return {
+            "success": True,
+            "scanned": len(docs),
+            "missing": len(missing),
+            "updated": updated,
+            "skipped": skipped,
+            "dry_run": dry_run,
         }
 
 

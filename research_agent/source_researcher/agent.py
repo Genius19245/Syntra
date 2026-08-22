@@ -1,6 +1,7 @@
 from google.adk.agents.llm_agent import Agent
 
-from .tools import announce_tool, fetch_page, fetch_pages, gather_sources, search_web
+from ..rag.gates import gate_research_tools
+from .tools import fetch_page, fetch_pages, gather_sources, search_web
 
 source_researcher = Agent(
     model="gemini-3.5-flash",
@@ -109,7 +110,7 @@ Do not teach the student.
 Do not create a curriculum.
 Do not create assessments.
 """,
-    before_tool_callback=announce_tool,
+    before_tool_callback=gate_research_tools,
     tools=[
         gather_sources,
         search_web,

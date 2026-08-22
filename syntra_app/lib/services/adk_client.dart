@@ -9,12 +9,14 @@ class AdkEvent {
   const AdkEvent({
     this.author,
     this.text,
+    this.toolName,
     this.partial = false,
     this.error,
   });
 
   final String? author;
   final String? text;
+  final String? toolName;
   final bool partial;
   final String? error;
 
@@ -27,10 +29,20 @@ class AdkEvent {
 
     final content = json['content'];
     final buffer = StringBuffer();
+    String? toolName;
     if (content is Map && content['parts'] is List) {
       for (final part in content['parts'] as List) {
-        if (part is Map && part['text'] is String) {
+        if (part is! Map) continue;
+        if (part['text'] is String) {
           buffer.write(part['text']);
+        }
+        final call = part['functionCall'] ?? part['function_call'];
+        if (call is Map && call['name'] is String) {
+          toolName = call['name'] as String;
+        }
+        final response = part['functionResponse'] ?? part['function_response'];
+        if (toolName == null && response is Map && response['name'] is String) {
+          toolName = response['name'] as String;
         }
       }
     }
@@ -38,6 +50,7 @@ class AdkEvent {
     return AdkEvent(
       author: json['author'] as String?,
       text: buffer.isEmpty ? null : buffer.toString(),
+      toolName: toolName,
       partial: json['partial'] == true,
     );
   }

@@ -12,6 +12,7 @@ class LearnerBrief extends ChangeNotifier {
   String? goalId;
   String priorKnowledge = '';
   String? depth;
+  bool strictVerification = false;
 
   EducationLevelSpec? get level =>
       levelId == null ? null : IntakeCatalog.levelById(levelId!);
@@ -153,6 +154,11 @@ class LearnerBrief extends ChangeNotifier {
     notifyListeners();
   }
 
+  void setStrictVerification(bool value) {
+    strictVerification = value;
+    notifyListeners();
+  }
+
   String toIntakePrompt() {
     final prior = priorKnowledge.trim().isEmpty
         ? 'Not specified'
@@ -160,6 +166,7 @@ class LearnerBrief extends ChangeNotifier {
     final boardLine = resolvedBoard ?? 'Not specified';
     final goalLine = goal?.label ?? 'Not specified';
     final depthLine = depth ?? 'Not specified';
+    final strictLine = strictVerification ? 'yes' : 'no';
 
     return '''
 SYNTRA Intake Brief
@@ -170,6 +177,7 @@ Topic: ${topic.trim()}
 Learning Goal: $goalLine
 Prior Knowledge: $prior
 Required Depth: $depthLine
+Strict verification: $strictLine
 
 Use these fields exactly. Do not infer a different level, board, subject, topic, goal, or depth.
 ''';

@@ -9,6 +9,8 @@ SEEN_URLS = "seen_urls"
 EVIDENCE_POOL = "evidence_pool"
 RETRIEVAL_MODE = "retrieval_mode"
 FRESHNESS_CLASS = "freshness_class"
+CACHE_EXACT = "cache_exact"
+STRICT_MODE = "strict_mode"
 
 
 def _state(container: Any) -> Any:
@@ -90,3 +92,46 @@ def set_retrieval_mode(container: Any, mode: str, freshness: str | None = None) 
     state[RETRIEVAL_MODE] = mode
     if freshness:
         state[FRESHNESS_CLASS] = freshness
+
+
+def set_cache_exact(container: Any, exact: bool) -> None:
+    state = _state(container)
+    if state is None:
+        return
+    state[CACHE_EXACT] = bool(exact)
+
+
+def set_strict_mode(container: Any, enabled: bool) -> None:
+    state = _state(container)
+    if state is None:
+        return
+    state[STRICT_MODE] = bool(enabled)
+
+
+def is_strict_mode(container: Any) -> bool:
+    state = _state(container)
+    if state is None:
+        return False
+    return bool(state.get(STRICT_MODE))
+
+
+def web_blocked(container: Any) -> bool:
+    """True when RAG_ONLY or an exact cache hit should skip live web research."""
+    state = _state(container)
+    if state is None:
+        return False
+    if bool(state.get(CACHE_EXACT)):
+        return True
+    return str(state.get(RETRIEVAL_MODE) or "") == "RAG_ONLY"
+
+
+def claim_coverage_met(container: Any, needed: int = 3) -> bool:
+    return len(_as_list(_state(container), EVIDENCE_POOL)) >= needed
+
+
+def capture_strict_from_text(container: Any, text: str) -> bool:
+    if not (text or "").strip():
+        return is_strict_mode(container)
+    enabled = "strict verification: yes" in text.lower()
+    set_strict_mode(container, enabled)
+    return enabled

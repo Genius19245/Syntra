@@ -401,6 +401,18 @@ class _BriefingCanvas extends StatelessWidget {
               maxLines: 3,
               onChanged: brief.setPriorKnowledge,
             ),
+            const SizedBox(height: 24),
+            const SectionHeader(
+              kicker: '07',
+              title: 'Verification',
+              subtitle: 'Optional. Strict mode costs more time.',
+            ),
+            const SizedBox(height: 14),
+            StrictModeToggle(
+              enabled: brief.strictVerification,
+              accent: accent,
+              onChanged: brief.setStrictVerification,
+            ),
           ],
         ),
       ),

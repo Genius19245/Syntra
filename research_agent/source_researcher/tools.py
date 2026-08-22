@@ -14,7 +14,13 @@ from google.adk.tools.tool_context import ToolContext
 from requests.adapters import HTTPAdapter
 
 from ..retrieval.authority import source_tier
-from ..retrieval.session import remember_query, remember_url, seen_urls as session_seen_urls
+from ..retrieval.session import (
+    claim_coverage_met,
+    remember_query,
+    remember_url,
+    seen_urls as session_seen_urls,
+    web_blocked,
+)
 
 _API_HEADERS = {
     "User-Agent": "SYNTRA/1.0 (educational research agent)",
@@ -523,6 +529,12 @@ def gather_sources(
     separate search_web + fetch_page calls, or one gather_sources per query.
     Skips duplicate queries and URLs already retrieved in this session.
     """
+    if web_blocked(tool_context):
+        return "Skipped web research: SYNTRA cache already covered this topic."
+    if claim_coverage_met(tool_context):
+        return (
+            "Skipped further web research: three teachable claims already covered."
+        )
     if not queries:
         return _gather_one(str(query or "").strip(), tool_context)
 

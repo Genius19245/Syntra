@@ -9,7 +9,7 @@ from google.adk.tools.tool_context import ToolContext
 
 from ..retrieval.authority import evaluate_source
 from ..retrieval.queries import generate_research_queries
-from ..retrieval.session import set_retrieval_mode
+from ..retrieval.session import remember_evidence, set_cache_exact, set_retrieval_mode
 from .firebase_cache import default_cache
 from .labels import label_prompt
 from .router import _merge_hits, plan_retrieval_mode
@@ -37,6 +37,7 @@ def plan_retrieval(
         subject=subject,
     )
     set_retrieval_mode(tool_context, plan["mode"], plan["freshness"])
+    set_cache_exact(tool_context, bool(plan.get("cache_exact")))
     return plan
 
 
@@ -46,6 +47,7 @@ def retrieve_knowledge(
     exam_board: str = "",
     subject: str = "",
     k: int = 5,
+    tool_context: Optional[ToolContext] = None,
 ) -> dict[str, Any]:
     """Retrieve persistent educational knowledge. Not a replacement for web search.
 
@@ -75,6 +77,11 @@ def retrieve_knowledge(
     if not cache_hits:
         local_hits = default_store().retrieve(query, filters=filters, k=limit)
     hits = _merge_hits(local_hits, cache_hits)[:limit]
+    for hit in hits:
+        package = hit.get("package") or {}
+        for claim in package.get("claims") or []:
+            if isinstance(claim, dict):
+                remember_evidence(tool_context, claim)
     return {
         "success": True,
         "query": query,

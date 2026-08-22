@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import '../../models/learner_brief.dart';
+import '../../models/research_origin.dart';
 import '../../theme/syntra_palette.dart';
 import '../../theme/syntra_theme.dart';
 import '../../widgets/glass_card.dart';
@@ -14,10 +15,12 @@ class CurriculumScreen extends StatelessWidget {
     super.key,
     required this.brief,
     required this.markdown,
+    this.origin,
   });
 
   final LearnerBrief brief;
   final String markdown;
+  final ResearchOrigin? origin;
 
   @override
   Widget build(BuildContext context) {
@@ -51,7 +54,10 @@ class CurriculumScreen extends StatelessWidget {
                     ),
               ),
               const Spacer(),
-              const StatusBadge(label: 'Ready to teach'),
+              if (origin != null && origin!.known)
+                StatusBadge(label: origin!.badge)
+              else
+                const StatusBadge(label: 'Ready to teach'),
             ],
           ),
           const SizedBox(height: 14),

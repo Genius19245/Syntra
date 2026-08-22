@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:uuid/uuid.dart';
 
 import '../../models/learner_brief.dart';
+import '../../models/research_origin.dart';
 import '../../services/adk_client.dart';
 import '../../theme/syntra_palette.dart';
 import '../../theme/syntra_theme.dart';
@@ -18,15 +19,17 @@ class PipelineStage {
     required this.label,
     required this.detail,
     required this.authors,
+    this.tools = const [],
   });
 
   final String id;
   final String label;
   final String detail;
   final List<String> authors;
+  final List<String> tools;
 }
 
-enum StageStatus { pending, active, complete }
+enum StageStatus { pending, active, complete, skipped }
 
 class AgentRunScreen extends StatefulWidget {
   const AgentRunScreen({super.key, required this.brief});
@@ -40,14 +43,31 @@ class AgentRunScreen extends StatefulWidget {
 class _AgentRunScreenState extends State<AgentRunScreen> {
   static const stages = [
     PipelineStage(
-      id: 'research',
-      label: 'Research',
-      detail: 'Gather sources and check the facts',
-      authors: [
-        'research_and_profile',
-        'research_agent',
-        'source_researcher',
-        'fact_checker',
+      id: 'label',
+      label: 'Label',
+      detail: 'Name the topic, subject, and cluster',
+      authors: ['research_and_profile', 'research_agent'],
+      tools: ['label_prompt', 'load_skill', 'load_skills'],
+    ),
+    PipelineStage(
+      id: 'cache',
+      label: 'Cache',
+      detail: 'Look up verified SYNTRA research',
+      authors: [],
+      tools: ['plan_retrieval', 'retrieve_knowledge'],
+    ),
+    PipelineStage(
+      id: 'web',
+      label: 'Web',
+      detail: 'Research live when the cache is thin',
+      authors: ['source_researcher', 'fact_checker'],
+      tools: [
+        'generate_research_queries',
+        'gather_sources',
+        'search_web',
+        'fetch_page',
+        'fetch_pages',
+        'evaluate_source',
       ],
     ),
     PipelineStage(
@@ -82,6 +102,7 @@ class _AgentRunScreenState extends State<AgentRunScreen> {
   };
   String _liveText = '';
   String _curriculum = '';
+  ResearchOrigin? _origin;
   String? _errorTitle;
   String? _errorDetail;
   bool _running = true;
@@ -100,7 +121,12 @@ class _AgentRunScreenState extends State<AgentRunScreen> {
     super.dispose();
   }
 
-  PipelineStage? _stageFor(String? author) {
+  PipelineStage? _stageFor(String? author, String? tool) {
+    if (tool != null && tool.isNotEmpty) {
+      for (final stage in stages) {
+        if (stage.tools.contains(tool)) return stage;
+      }
+    }
     if (author == null) return null;
     for (final stage in stages) {
       if (stage.authors.contains(author)) return stage;
@@ -108,8 +134,21 @@ class _AgentRunScreenState extends State<AgentRunScreen> {
     return null;
   }
 
+  void _applyOrigin(ResearchOrigin origin) {
+    _origin = origin;
+    if (origin.fromCache) {
+      _status['cache'] = StageStatus.complete;
+      _status['web'] = StageStatus.skipped;
+    } else if (origin.hybrid) {
+      _status['cache'] = StageStatus.complete;
+      _status['web'] = StageStatus.complete;
+    } else if (origin.liveWeb) {
+      _status['web'] = StageStatus.complete;
+    }
+  }
+
   void _markActive(PipelineStage stage) {
-    const parallel = {'research', 'profile'};
+    const parallel = {'label', 'cache', 'web', 'profile'};
     final index = stages.indexWhere((item) => item.id == stage.id);
     for (var i = 0; i < stages.length; i++) {
       final item = stages[i];
@@ -135,6 +174,7 @@ class _AgentRunScreenState extends State<AgentRunScreen> {
       _errorDetail = null;
       _liveText = '';
       _curriculum = '';
+      _origin = null;
       for (final stage in stages) {
         _status[stage.id] = StageStatus.pending;
       }
@@ -155,13 +195,17 @@ class _AgentRunScreenState extends State<AgentRunScreen> {
           throw AdkException(event.error!);
         }
 
-        final stage = _stageFor(event.author);
+        final stage = _stageFor(event.author, event.toolName);
         if (stage != null) {
           _markActive(stage);
         }
 
         if (event.hasText) {
           final text = event.text!;
+          final parsed = ResearchOrigin.parse(text);
+          if (parsed != null && parsed.known) {
+            _applyOrigin(parsed);
+          }
           if (event.partial) {
             _liveText =
                 text.length >= _liveText.length ? text : _liveText + text;
@@ -188,7 +232,9 @@ class _AgentRunScreenState extends State<AgentRunScreen> {
       }
 
       for (final stage in stages) {
-        _status[stage.id] = StageStatus.complete;
+        if (_status[stage.id] != StageStatus.skipped) {
+          _status[stage.id] = StageStatus.complete;
+        }
       }
 
       if (!mounted) return;
@@ -202,7 +248,11 @@ class _AgentRunScreenState extends State<AgentRunScreen> {
       Navigator.of(context).pushReplacement(
         PageRouteBuilder(
           pageBuilder: (context, animation, secondaryAnimation) =>
-              CurriculumScreen(brief: widget.brief, markdown: _curriculum),
+              CurriculumScreen(
+            brief: widget.brief,
+            markdown: _curriculum,
+            origin: _origin,
+          ),
           transitionsBuilder: (context, animation, secondaryAnimation, child) {
             return FadeTransition(opacity: animation, child: child);
           },
@@ -262,7 +312,8 @@ class _AgentRunScreenState extends State<AgentRunScreen> {
                           const SizedBox(height: 6),
                           Text(
                             _errorTitle == null
-                                ? 'Gathering sources and initialising the planning workspace.'
+                                ? (_origin?.runSubtitle ??
+                                    'Labelling the topic, then checking the cache.')
                                 : '${widget.brief.resolvedSubject ?? 'Topic'}  ·  ${widget.brief.topic}',
                             style: SyntraTheme.sans(
                               color: SyntraPalette.inkMuted,
@@ -397,6 +448,7 @@ class _PipelineRow extends StatelessWidget {
       StageStatus.pending => SyntraPalette.inkFaint,
       StageStatus.active => accent,
       StageStatus.complete => SyntraPalette.sage,
+      StageStatus.skipped => SyntraPalette.inkMuted,
     };
 
     return IntrinsicHeight(
@@ -440,7 +492,9 @@ class _PipelineRow extends StatelessWidget {
                   Text(
                     status == StageStatus.active
                         ? 'In progress'
-                        : stage.detail,
+                        : status == StageStatus.skipped
+                            ? 'Skipped — reused from SYNTRA cache'
+                            : stage.detail,
                     style: SyntraTheme.sans(
                       color: status == StageStatus.active
                           ? accent
@@ -484,8 +538,12 @@ class _StepMark extends StatelessWidget {
             ? [BoxShadow(color: color.withValues(alpha: 0.35), blurRadius: 10)]
             : const [],
       ),
-      child: status == StageStatus.complete
-          ? const Icon(Icons.check, size: 14, color: SyntraPalette.onAccent)
+      child: status == StageStatus.complete || status == StageStatus.skipped
+          ? Icon(
+              status == StageStatus.skipped ? Icons.remove : Icons.check,
+              size: 14,
+              color: SyntraPalette.onAccent,
+            )
           : Text(
               '$index',
               style: SyntraTheme.sans(

@@ -87,13 +87,13 @@ def test_skills_load_with_adk_names():
     assert len(SKILL_NAMES) == 5
 
 
-def test_research_agent_keeps_fact_checker_code_but_not_in_flow():
+def test_research_agent_keeps_fact_checker_gated_until_strict_mode():
     from research_agent.agent import FACT_CHECKER_ENABLED, fact_checker, research_agent
 
     assert FACT_CHECKER_ENABLED is False
     assert fact_checker.name == "fact_checker"
     names = [agent.name for agent in research_agent.sub_agents]
-    assert names == ["source_researcher"]
+    assert names == ["source_researcher", "fact_checker"]
     assert research_agent.output_key == "research_package"
 
 

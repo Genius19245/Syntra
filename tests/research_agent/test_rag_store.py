@@ -48,6 +48,38 @@ def test_university_cs_does_not_return_gcse_chemistry():
     assert "gcse" not in levels
 
 
+def test_named_exam_board_excludes_other_boards(tmp_path):
+    (tmp_path / "aqa.md").write_text(
+        """---
+topic: magnets
+subject: physics
+education_level: gcse
+exam_board: aqa
+title: AQA magnets
+---
+AQA classroom notes on magnets.
+"""
+    )
+    (tmp_path / "ocr.md").write_text(
+        """---
+topic: magnets
+subject: physics
+education_level: gcse
+exam_board: ocr
+title: OCR magnets
+---
+OCR classroom notes on magnets.
+"""
+    )
+    store = KnowledgeStore(root=tmp_path)
+    hits = store.retrieve(
+        "magnets",
+        filters={"subject": "physics", "exam_board": "AQA"},
+    )
+    boards = {str(hit["metadata"].get("exam_board") or "").lower() for hit in hits}
+    assert boards == {"aqa"}
+
+
 def test_history_does_not_assume_an_exam_board():
     hits = default_store().retrieve(
         "Explain the causes of the First World War.",

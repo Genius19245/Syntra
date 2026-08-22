@@ -5,6 +5,7 @@ warnings.filterwarnings("ignore", message=r"\[EXPERIMENTAL\]", category=UserWarn
 from google.adk.agents.llm_agent import Agent
 
 from .fact_checker.agent import fact_checker
+from .rag.gates import gate_research_tools
 from .rag.tools import (
     evaluate_source,
     generate_research_queries,
@@ -15,10 +16,8 @@ from .rag.tools import (
 )
 from .skills import load_research_skills
 from .source_researcher.agent import source_researcher
-from .source_researcher.tools import announce_tool
 
-# Fact Checker code stays in the repo. Flip this to True to put it
-# back in the live research flow.
+# Default is off. Intake "Strict verification: yes" opts the Fact Checker in.
 FACT_CHECKER_ENABLED = False
 _SPECIALISTS = {
     "source_researcher": source_researcher,
@@ -37,13 +36,14 @@ research_agent = Agent(
 You are SYNTRA's Research Agent.
 
 You coordinate research for a lesson, not a dissertation.
-The Fact Checker is currently disabled to keep research fast.
-Do not transfer to fact_checker. Do not wait for it.
-
 Read the student's SYNTRA Intake Brief if present. Copy
-Education Level, Exam Board, Subject, Topic, and Required Depth.
-Do not assume an exam board when none is named.
-Do not assume A-Level, Physics, or any other default subject.
+Education Level, Exam Board, Subject, Topic, Required Depth,
+and Strict verification. Do not assume an exam board when none
+is named. Do not assume A-Level, Physics, or any other default.
+
+The Fact Checker stays off unless the brief says
+"Strict verification: yes". That mode is slower. If strict
+mode is off, do not transfer to fact_checker.
 
 Load skills before you research. In the first tool turn, load all
 five skills together: curriculum-alignment, research-query,
@@ -100,8 +100,12 @@ Required workflow — follow this order every time:
    exact-age, or "the literature" claims unless the brief is
    postgraduate.
 
-8. Assemble the JSON research package now. Do not delegate to the
-   Fact Checker. Leave claims[].verification null or omit it.
+8. Assemble the JSON research package now.
+   If Strict verification is yes, transfer to fact_checker and
+   wait for claim verifications. Set research_method.fact_check_used
+   to true only when that specialist actually ran.
+   If Strict verification is no or omitted, do not transfer to
+   fact_checker. Leave claims[].verification null or omit it.
    Set research_method.fact_check_used to false.
    Never invent scores such as 5/5, percentages, TRUE, or
    "all claims verified".
@@ -115,7 +119,8 @@ Required workflow — follow this order every time:
 
 10. Then return the JSON package.
 
-Never transfer to fact_checker.
+Never transfer to fact_checker unless the brief says
+Strict verification: yes.
 Never answer from your own knowledge instead of retrieving or delegating.
 Never invent sources or URLs.
 
@@ -127,7 +132,7 @@ you must delegate to the Source Researcher.
 The Source Researcher finds web information.
 The Firestore research cache is the primary RAG store. Local markdown
 is a seed fallback when the cache is empty.
-Do not use the Fact Checker in this run.
+Do not use the Fact Checker unless Strict verification is yes.
 
 Your final output MUST be JSON matching this shape:
 
@@ -169,7 +174,7 @@ Your final output MUST be JSON matching this shape:
 }
 
 Set research_method from what you actually did.
-Set fact_check_used to false. Do not invent Fact Checker verdicts.
+Set fact_check_used to true only if the Fact Checker ran.
 
 Do not design the curriculum.
 Do not create slides.
@@ -180,7 +185,7 @@ When you have assembled and stored the research package, stop.
 Do not transfer to the Curriculum Agent.
 Return the research package so the Curriculum Agent can use it next.
 """,
-    before_tool_callback=announce_tool,
+    before_tool_callback=gate_research_tools,
     tools=[
         load_research_skills(),
         label_prompt,
@@ -192,11 +197,7 @@ Return the research package so the Curriculum Agent can use it next.
     ],
     sub_agents=[
         _SPECIALISTS["source_researcher"],
-        *(
-            [_SPECIALISTS["fact_checker"]]
-            if FACT_CHECKER_ENABLED
-            else []
-        ),
+        _SPECIALISTS["fact_checker"],
     ],
     output_key="research_package",
 )

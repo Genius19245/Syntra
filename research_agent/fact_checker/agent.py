@@ -1,7 +1,8 @@
 from google.adk.agents.llm_agent import Agent
 
+from ..rag.gates import gate_research_tools
 from .schema import FactCheckReport
-from .tools import announce_tool, verify_claims
+from .tools import verify_claims
 
 fact_checker = Agent(
     model="gemini-3.5-flash",
@@ -77,7 +78,7 @@ Do not change a claim merely to make it easier to verify.
 Your output will be passed back to the Research Agent and
 eventually to the Curriculum Agent.
 """,
-    before_tool_callback=announce_tool,
+    before_tool_callback=gate_research_tools,
     tools=[
         verify_claims,
     ],
