@@ -21,10 +21,14 @@ class Confidence(str, Enum):
 
 class ClaimSource(BaseModel):
     organisation: str = Field(
-        description="Source organisation, e.g. IPCC, NASA, NOAA."
+        description="Source organisation, e.g. an exam board or scientific body."
     )
     title: str | None = Field(default=None, description="Source title if known.")
     url: str | None = Field(default=None, description="Source URL if retrieved.")
+    source_tier: int | None = Field(
+        default=None,
+        description="Authority tier 1 (highest) to 5 (lowest).",
+    )
 
 
 class VerifiedClaim(BaseModel):
@@ -33,19 +37,28 @@ class VerifiedClaim(BaseModel):
         description="Evidence from retrieved sources that supports or contradicts the claim."
     )
     sources: list[ClaimSource] = Field(
-        description="Sources attached to this claim only."
+        default_factory=list,
+        description="Sources attached to this claim only.",
     )
     verification: Verification
     confidence: Confidence
     primary_source: str = Field(
-        description="Most authoritative organisation supporting the claim, or NONE."
+        default="NONE",
+        description="Most authoritative organisation supporting the claim, or NONE.",
     )
     secondary_source: str = Field(
-        description="Corroborating organisation, or NONE."
+        default="NONE",
+        description="Corroborating organisation, or NONE.",
     )
+    supporting_sources: list[ClaimSource] = Field(default_factory=list)
+    contradictory_sources: list[ClaimSource] = Field(default_factory=list)
     notes: str | None = Field(
         default=None,
         description="Caveats, contradictions, or dating concerns.",
+    )
+    verdict: Verification | None = Field(
+        default=None,
+        description="Alias of verification for downstream agents.",
     )
 
 

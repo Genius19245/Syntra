@@ -56,12 +56,20 @@ Required workflow:
    types when drafting.
 
 5. Draft a concise list of measurable objectives. Then call
-   classify_objective_type once with the full list.
+   classify_objective_type and validate_learning_objectives in the
+   same turn with the full list (plus education level and topic
+   for validate). Do not classify or validate one objective at a
+   time. Do not put classify and validate in separate turns.
 
-6. Call validate_learning_objectives once with the full list,
-   education level, and topic. Fix every issue it reports, then
-   re-validate. Treat warnings as guidance, not a hard fail.
-   Do not classify or validate one objective at a time.
+   If you already have a complete draft before the first tool
+   call, issue generate_objective_framework, classify_objective_type,
+   and validate_learning_objectives together in that single turn.
+
+6. Re-validate only if the validator returned errors (a non-empty
+   issues list, or valid is false). Fix those errors, then call
+   validate_learning_objectives once more. If it returned only
+   warnings, or valid is true, do not call it again. Treat
+   warnings as guidance, not a hard fail.
 
 Your objectives must be:
 

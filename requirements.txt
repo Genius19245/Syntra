@@ -1,0 +1,6 @@
+google-adk[a2a]==2.7.1
+requests
+beautifulsoup4
+pydantic
+pytest
+firebase-admin

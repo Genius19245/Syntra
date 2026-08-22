@@ -1,0 +1,9 @@
+.git
+.venv
+syntra_app
+**/__pycache__
+**/.adk
+**/.env
+**/.DS_Store
+**/*.pyc
+.cursor

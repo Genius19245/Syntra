@@ -21,6 +21,7 @@ from contextlib import aclosing
 from google.adk.agents.base_agent import BaseAgent
 from google.adk.agents.context import Context
 from google.adk.agents.invocation_context import InvocationContext
+from google.adk.agents.parallel_agent import ParallelAgent
 from google.adk.agents.sequential_agent import SequentialAgent
 from google.adk.events.event import Event
 from google.adk.runners import Runner
@@ -28,6 +29,7 @@ from google.adk.runners import Runner
 _original_run_async = Runner.run_async
 _original_create_invocation_context = BaseAgent._create_invocation_context
 _original_get_invocation_context = Context.get_invocation_context
+_original_model_copy = InvocationContext.model_copy
 
 
 def _copy_event_queue(
@@ -49,10 +51,18 @@ def _get_invocation_context(self: Context) -> InvocationContext:
     return _copy_event_queue(self._invocation_context, copied)
 
 
+def _model_copy(self: InvocationContext, *args, **kwargs) -> InvocationContext:
+    copied = _original_model_copy(self, *args, **kwargs)
+    queue = getattr(self, "_event_queue", None)
+    if queue is not None:
+        copied._event_queue = queue
+    return copied
+
+
 async def _run_async(self: Runner, **kwargs) -> AsyncGenerator[Event, None]:
     agen = (
         self._run_node_async(**kwargs)
-        if isinstance(self.agent, SequentialAgent)
+        if isinstance(self.agent, (SequentialAgent, ParallelAgent))
         else _original_run_async(self, **kwargs)
     )
     async with aclosing(agen) as stream:
@@ -69,6 +79,7 @@ def apply() -> None:
     Runner.run_async = _run_async
     BaseAgent._create_invocation_context = _create_invocation_context
     Context.get_invocation_context = _get_invocation_context
+    InvocationContext.model_copy = _model_copy
 
 
 apply()

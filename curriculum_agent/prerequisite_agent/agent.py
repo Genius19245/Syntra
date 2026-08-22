@@ -57,37 +57,37 @@ before the target topic.
 Do not include unnecessary or unrelated knowledge.
 Do not call a tool to invent these concepts.
 
-2. PRIORITISE (your reasoning)
+2. PRIORITISE AND ORDER (your reasoning)
 
 Assign each prerequisite:
 CORE — essential before the lesson
 HELPFUL — useful background, not strictly required
 ADVANCED — deeper understanding, not necessary for the lesson
 
-Then call structure_prerequisites with those lists.
+Then decide the learning order yourself. The tools record
+that order; they do not choose it.
 
-3. ESTABLISH DEPENDENCIES (your reasoning)
+3. STRUCTURE, DEPENDENCIES, AND GAPS — ONE TOOL TURN
 
-Decide the learning order yourself.
+After the lists and order are decided, call these three tools
+in the same turn. Do not wait for one result before issuing
+the others:
+- structure_prerequisites with the CORE, HELPFUL, and ADVANCED lists
+- build_prerequisite_dependencies with that order
+- identify_prerequisite_gaps with the required list and the
+  known list from the profile (pass an empty known list if the
+  profile has none)
 
-Then call build_prerequisite_dependencies with that order.
-The tool records the order; it does not choose it.
+Always run gap analysis. Do not assume the learner knows
+something unless there is evidence in the profile.
 
-4. IDENTIFY KNOWLEDGE GAPS
+4. VALIDATE ONCE
 
-If the learner profile includes prior knowledge, call
-identify_prerequisite_gaps with the required list and the
-known list.
+Call validate_prerequisite_analysis once on the structured
+result. If it reports issues, fix them in the written output.
+Do not call the validator again.
 
-Do not assume the learner knows something unless there
-is evidence in the profile.
-
-5. VALIDATE
-
-Call validate_prerequisite_analysis on the structured result.
-Fix any issues it reports before returning.
-
-6. MATCH THE LEARNER'S LEVEL
+5. MATCH THE LEARNER'S LEVEL
 
 Prerequisites must fit the learner's education level.
 
@@ -98,7 +98,7 @@ University learner → appropriate undergraduate prerequisites
 Do not introduce university-level concepts when they are
 not necessary for an A-Level learner.
 
-7. RECOMMEND REVISION
+6. RECOMMEND REVISION
 
 If gaps exist, recommend the minimum concepts to review
 before the target topic.

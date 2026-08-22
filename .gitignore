@@ -1,6 +1,10 @@
 # Secrets
 .env
 **/.env
+*.pem
+**/credentials.json
+**/serviceAccount*.json
+*firebase-adminsdk*.json
 
 # Virtual environments
 .venv/
@@ -20,6 +24,38 @@ build/
 # Local ADK / app state
 .adk/
 *.db
+
+# Generated RAG corpus (seed samples stay tracked)
+research_agent/knowledge/previous_research/**
+!research_agent/knowledge/previous_research/.gitkeep
+!research_agent/knowledge/previous_research/README.md
+
+# Local vector / embedding artifacts (Firestore holds production vectors)
+**/chroma*/
+**/.chroma/
+*.faiss
+*.index
+*.npy
+*.npz
+
+# Firebase project files (local only; RAG Python source stays tracked)
+firebase.json
+.firebaserc
+firestore.rules
+firestore.indexes.json
+.firebase/
+firebase-debug.log
+firestore-debug.log
+ui-debug.log
+**/google-services.json
+**/GoogleService-Info.plist
+**/firebase_options.dart
+.firestore-rules-findings.md
+
+# Flutter caches (syntra_app/.gitignore also covers these)
+syntra_app/build/
+syntra_app/.dart_tool/
+syntra_app/.flutter-plugins-dependencies
 
 # Tooling
 .ruff_cache/

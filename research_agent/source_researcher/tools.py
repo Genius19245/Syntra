@@ -1,12 +1,20 @@
 import os
 import random
+import re
+import threading
 from base64 import urlsafe_b64decode
+from concurrent.futures import ThreadPoolExecutor, as_completed
 from functools import lru_cache
+from typing import Optional
 from urllib.parse import parse_qs, quote, unquote, urlparse
 
 import requests
 from bs4 import BeautifulSoup
+from google.adk.tools.tool_context import ToolContext
 from requests.adapters import HTTPAdapter
+
+from ..retrieval.authority import source_tier
+from ..retrieval.session import remember_query, remember_url, seen_urls as session_seen_urls
 
 _API_HEADERS = {
     "User-Agent": "SYNTRA/1.0 (educational research agent)",
@@ -59,15 +67,39 @@ _MAX_RESULTS = 6
 _MAX_PAGE_BYTES = 800_000
 _MAX_PAGE_CHARS = 6_000
 
-_session = requests.Session()
-_adapter = HTTPAdapter(pool_connections=4, pool_maxsize=8, max_retries=1)
-_session.mount("https://", _adapter)
-_session.mount("http://", _adapter)
+_thread_local = threading.local()
+_URL_LINE = re.compile(r"^\s*URL:\s*(\S+)", re.MULTILINE)
+
+
+def _http() -> requests.Session:
+    session = getattr(_thread_local, "session", None)
+    if session is None:
+        session = requests.Session()
+        adapter = HTTPAdapter(pool_connections=4, pool_maxsize=8, max_retries=1)
+        session.mount("https://", adapter)
+        session.mount("http://", adapter)
+        _thread_local.session = session
+    return session
 
 
 def announce_tool(tool, args, tool_context):
     """Print tool activity so `adk run` is not silent during research."""
-    detail = args.get("request") or args.get("query") or args.get("url") or ""
+    queries = args.get("queries")
+    queries_detail = (
+        ", ".join(str(item) for item in queries if item)
+        if isinstance(queries, list)
+        else ""
+    )
+    detail = (
+        args.get("request")
+        or args.get("query")
+        or queries_detail
+        or args.get("url")
+        or args.get("question")
+        or args.get("topic")
+        or (str(args.get("package_json") or "")[:80])
+        or ""
+    )
     suffix = f": {detail[:120]}" if detail else ""
     print(f"[{tool.name}]{suffix}", flush=True)
 
@@ -81,67 +113,9 @@ def _is_blocked(url: str) -> bool:
     return any(part in host for part in _BLOCKED_HOSTS)
 
 
-_TIER1_HOSTS = (
-    "ipcc.ch",
-    "who.int",
-    "esa.int",
-    "unep.org",
-    "unesco.org",
-    "iaea.org",
-    "cern.ch",
-    "nature.com",
-    "science.org",
-    "pnas.org",
-    "cell.com",
-    "thelancet.com",
-    "nejm.org",
-    "arxiv.org",
-    "ncbi.nlm.nih.gov",
-)
-_TIER2_HOSTS = (
-    "springer.com",
-    "wiley.com",
-    "sciencedirect.com",
-    "elsevier.com",
-    "jstor.org",
-    "cambridge.org",
-    "oup.com",
-    "oxfordacademic.com",
-    "tandfonline.com",
-    "sagepub.com",
-    "ieee.org",
-    "acm.org",
-    "aps.org",
-    "rsc.org",
-    "acs.org",
-    "britannica.com",
-    "khanacademy.org",
-    "nationalgeographic.com",
-    "si.edu",
-)
-
-
-def _host_matches(host: str, suffixes: tuple[str, ...]) -> bool:
-    return any(host == suffix or host.endswith("." + suffix) for suffix in suffixes)
-
-
 def _authority(url: str) -> int:
-    """Lower is better. Matches the Source Researcher hierarchy."""
-    host = _host(url)
-    # Tier 3 — supporting only. Check before generic .org.
-    if host.endswith(("wikipedia.org", "wikimedia.org")):
-        return 2
-    # Tier 1 — government, universities, scientific orgs, peer-reviewed.
-    if (
-        host.endswith((".edu", ".gov", ".mil", ".gov.uk"))
-        or ".ac." in host
-        or _host_matches(host, _TIER1_HOSTS)
-    ):
-        return 0
-    # Tier 2 — educational organisations and academic publishers.
-    if _host_matches(host, _TIER2_HOSTS) or host.endswith(".org"):
-        return 1
-    return 3
+    """Lower is better. Delegates to the shared 1–5 source-tier ranking."""
+    return source_tier(url)
 
 
 def _decode_bing_url(href: str) -> str:
@@ -184,7 +158,7 @@ def _plain(html: str) -> str:
 
 
 def _read_html(url: str, timeout: int) -> tuple[str, str]:
-    with _session.get(
+    with _http().get(
         url, timeout=timeout, stream=True, headers=_html_headers()
     ) as response:
         response.raise_for_status()
@@ -241,7 +215,7 @@ def _title_matches(title: str, terms: list[str]) -> bool:
 
 def _wikipedia_search(query: str) -> list[tuple[str, str, str]]:
     terms = _key_terms(query)
-    response = _session.get(
+    response = _http().get(
         "https://en.wikipedia.org/w/api.php",
         params={
             "action": "query",
@@ -273,7 +247,7 @@ def _wikipedia_search(query: str) -> list[tuple[str, str, str]]:
 
 
 def _bing_search(query: str) -> list[tuple[str, str, str]]:
-    response = _session.get(
+    response = _http().get(
         "https://www.bing.com/search",
         params={"q": f"{query} {_QUERY_EXCLUSIONS}", "count": 10},
         headers=_html_headers(),
@@ -307,7 +281,7 @@ def _wikipedia_extract(url: str) -> str | None:
     title = unquote(parsed.path.split("/wiki/")[-1]).replace("_", " ")
     if not title:
         return None
-    response = _session.get(
+    response = _http().get(
         "https://en.wikipedia.org/w/api.php",
         params={
             "action": "query",
@@ -351,15 +325,25 @@ def search_web(query: str) -> str:
     collected: list[tuple[str, str, str]] = []
     errors: list[str] = []
 
-    try:
-        collected.extend(_wikipedia_search(query))
-    except requests.RequestException as exc:
-        errors.append(f"Wikipedia search failed: {exc}")
+    def _wiki() -> tuple[list[tuple[str, str, str]], str | None]:
+        try:
+            return _wikipedia_search(query), None
+        except requests.RequestException as exc:
+            return [], f"Wikipedia search failed: {exc}"
 
-    try:
-        collected.extend(_bing_search(query))
-    except requests.RequestException as exc:
-        errors.append(f"Web search failed: {exc}")
+    def _bing() -> tuple[list[tuple[str, str, str]], str | None]:
+        try:
+            return _bing_search(query), None
+        except requests.RequestException as exc:
+            return [], f"Web search failed: {exc}"
+
+    with ThreadPoolExecutor(max_workers=2) as pool:
+        futures = [pool.submit(_wiki), pool.submit(_bing)]
+        for future in as_completed(futures):
+            hits, error = future.result()
+            collected.extend(hits)
+            if error:
+                errors.append(error)
 
     unique: list[tuple[str, str, str]] = []
     seen: set[str] = set()
@@ -381,6 +365,7 @@ def search_web(query: str) -> str:
         lines.append(
             f"{index}. {title}\n"
             f"   Organisation: {_host(url)}\n"
+            f"   Source tier: {source_tier(url)}\n"
             f"   URL: {url}\n"
             f"   Snippet: {snippet}"
         )
@@ -449,3 +434,162 @@ def fetch_page(url: str) -> str:
         f"URL: {final_url}\n\n"
         f"{body}"
     )
+
+
+def fetch_pages(
+    urls: list[str],
+    tool_context: Optional[ToolContext] = None,
+) -> str:
+    """Fetch up to 3 source pages at the same time."""
+    cleaned: list[str] = []
+    seen: set[str] = set()
+    already = set(session_seen_urls(tool_context)) if tool_context is not None else set()
+    for url in urls or []:
+        href = (url or "").strip()
+        if not href or href in seen or href in already:
+            continue
+        seen.add(href)
+        cleaned.append(href)
+        if len(cleaned) >= 3:
+            break
+    if not cleaned:
+        return "No URLs were provided."
+    if tool_context is not None:
+        for href in cleaned:
+            remember_url(tool_context, href)
+    if len(cleaned) == 1:
+        return fetch_page(cleaned[0])
+    with ThreadPoolExecutor(max_workers=len(cleaned)) as pool:
+        pages = list(pool.map(fetch_page, cleaned))
+    return "\n\n---\n\n".join(
+        f"SOURCE {index}\n{page}" for index, page in enumerate(pages, start=1)
+    )
+
+
+def _requested_queries(query: str, queries: Optional[list[str]]) -> list[str]:
+    requested: list[str] = []
+    seen: set[str] = set()
+    for raw in (query, *(queries or [])):
+        text = " ".join(str(raw or "").split())
+        if not text:
+            continue
+        key = text.lower()
+        if key in seen:
+            continue
+        seen.add(key)
+        requested.append(text)
+    return requested
+
+
+def _gather_one(
+    query: str,
+    tool_context: Optional[ToolContext] = None,
+) -> str:
+    if not query or not str(query).strip():
+        return "Search query cannot be empty."
+    query = str(query).strip()
+    if tool_context is not None and not remember_query(tool_context, query):
+        return f"Skipped duplicate query: {query}"
+    listing = search_web(query)
+    urls = _URL_LINE.findall(listing)
+    selected: list[str] = []
+    already = set(session_seen_urls(tool_context)) if tool_context is not None else set()
+    for url in urls:
+        if url in already or url in selected:
+            continue
+        selected.append(url)
+        if len(selected) >= 2:
+            break
+    if not selected:
+        return listing
+    pages = fetch_pages(selected, tool_context=tool_context)
+    return (
+        "SEARCH RESULTS\n"
+        f"{listing}\n\n"
+        "FETCHED PAGES\n"
+        f"{pages}"
+    )
+
+
+def gather_sources(
+    query: str = "",
+    queries: Optional[list[str]] = None,
+    tool_context: Optional[ToolContext] = None,
+) -> str:
+    """
+    Search once, then fetch the top 2 authoritative pages in parallel.
+
+    Pass queries to search several terms in one call. Prefer this over
+    separate search_web + fetch_page calls, or one gather_sources per query.
+    Skips duplicate queries and URLs already retrieved in this session.
+    """
+    if not queries:
+        return _gather_one(str(query or "").strip(), tool_context)
+
+    requested = _requested_queries(query, queries)
+    if not requested:
+        return "Search query cannot be empty."
+    if len(requested) == 1:
+        return _gather_one(requested[0], tool_context)
+
+    skipped: list[str] = []
+    to_run: list[str] = []
+    for item in requested:
+        if tool_context is not None and not remember_query(tool_context, item):
+            skipped.append(f"Skipped duplicate query: {item}")
+        else:
+            to_run.append(item)
+
+    listings: list[str] = []
+    if to_run:
+        with ThreadPoolExecutor(max_workers=len(to_run)) as pool:
+            listings = list(pool.map(search_web, to_run))
+
+    already = set(session_seen_urls(tool_context)) if tool_context is not None else set()
+    blocks: list[tuple[str, str, list[str]]] = []
+    selected_urls: list[str] = []
+    for item, listing in zip(to_run, listings):
+        selected: list[str] = []
+        for url in _URL_LINE.findall(listing):
+            if url in already or url in selected:
+                continue
+            selected.append(url)
+            already.add(url)
+            if len(selected) >= 2:
+                break
+        blocks.append((item, listing, selected))
+        selected_urls.extend(selected)
+
+    if tool_context is not None:
+        for href in selected_urls:
+            remember_url(tool_context, href)
+
+    pages_by_url: dict[str, str] = {}
+    if selected_urls:
+        with ThreadPoolExecutor(max_workers=len(selected_urls)) as pool:
+            fetched = list(pool.map(fetch_page, selected_urls))
+        pages_by_url = dict(zip(selected_urls, fetched))
+
+    sections: list[str] = []
+    for item, listing, selected in blocks:
+        if selected:
+            pages = (
+                pages_by_url[selected[0]]
+                if len(selected) == 1
+                else "\n\n---\n\n".join(
+                    f"SOURCE {index}\n{pages_by_url[url]}"
+                    for index, url in enumerate(selected, start=1)
+                )
+            )
+            body = (
+                "SEARCH RESULTS\n"
+                f"{listing}\n\n"
+                "FETCHED PAGES\n"
+                f"{pages}"
+            )
+        else:
+            body = listing
+        sections.append(f"QUERY: {item}\n{body}")
+    sections.extend(skipped)
+    return "\n\n====\n\n".join(sections)
+

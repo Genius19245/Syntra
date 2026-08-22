@@ -1,6 +1,5 @@
 from google.adk.agents.llm_agent import Agent
 
-from .learner_profiler.agent import learner_profiler_agent
 from .learning_objectives_agent.agent import learning_objectives_agent
 from .prerequisite_agent.agent import prerequisite_agent
 
@@ -40,17 +39,15 @@ PREREQUISITE ANALYSIS:
 LEARNING OBJECTIVES:
 {learning_objectives?}
 
-You do not construct the learner profile yourself.
+You do not construct the learner profile yourself unless it is missing.
 You do not invent prerequisite knowledge yourself.
 You do not invent learning objectives yourself.
 
 Required workflow — follow this order every time:
 
-1. Delegate to the Learner Profiler Agent.
-   Pass the student's request so it can determine educational
-   level, subject, topic, goals, prior knowledge, and required
-   teaching depth.
-   Wait for the learner profile.
+1. Use the LEARNER PROFILE below. If it is already filled, do not
+   rebuild it. If it is empty, copy the SYNTRA Intake Brief fields
+   from the student message exactly.
 
 2. Delegate to the Prerequisite Agent.
    Pass the learner profile, the research package, the subject,
@@ -185,7 +182,6 @@ Describe what the learner should understand or be able to do
 after completing the curriculum.
 """,
     sub_agents=[
-        learner_profiler_agent,
         prerequisite_agent,
         learning_objectives_agent,
     ],

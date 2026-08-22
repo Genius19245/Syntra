@@ -38,6 +38,12 @@ Possible values include:
 - Other
 - Unknown
 
+If the user message contains a SYNTRA Intake Brief with explicit
+fields (Education Level, Exam Board, Subject, Topic, Learning
+Goal, Prior Knowledge, Required Depth), copy those fields exactly.
+Do not infer a different level, board, subject, topic, goal, or
+depth when they are already specified.
+
 If the user explicitly states their level, use it.
 
 Examples:

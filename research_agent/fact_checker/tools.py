@@ -1,6 +1,9 @@
+import json
 import os
 import random
+import threading
 from base64 import urlsafe_b64decode
+from concurrent.futures import ThreadPoolExecutor, as_completed
 from typing import Any
 from urllib.parse import parse_qs, unquote, urlparse
 
@@ -34,10 +37,18 @@ _QUERY_EXCLUSIONS = (
     "-site:tiktok.com -site:instagram.com"
 )
 
-_session = requests.Session()
-_adapter = HTTPAdapter(pool_connections=4, pool_maxsize=8, max_retries=1)
-_session.mount("https://", _adapter)
-_session.mount("http://", _adapter)
+_thread_local = threading.local()
+
+
+def _http() -> requests.Session:
+    session = getattr(_thread_local, "session", None)
+    if session is None:
+        session = requests.Session()
+        adapter = HTTPAdapter(pool_connections=4, pool_maxsize=8, max_retries=1)
+        session.mount("https://", adapter)
+        session.mount("http://", adapter)
+        _thread_local.session = session
+    return session
 
 
 def announce_tool(tool, args, tool_context):
@@ -202,36 +213,41 @@ def search_web(query: str, max_results: int = 8) -> dict[str, Any]:
     results: list[dict[str, str]] = []
     errors: list[str] = []
 
-    try:
-        response = _session.get(
-            "https://html.duckduckgo.com/html/",
-            params={"q": query},
-            headers=_html_headers(),
-            timeout=REQUEST_TIMEOUT,
-        )
-        response.raise_for_status()
-        if "anomaly-modal" not in response.text:
-            results.extend(_parse_ddg_results(response.text, max_results))
-    except requests.RequestException as e:
-        errors.append(f"DuckDuckGo search failed: {e}")
-
-    if len(results) < max_results:
+    def _ddg() -> tuple[list[dict[str, str]], str | None]:
         try:
-            response = _session.get(
+            response = _http().get(
+                "https://html.duckduckgo.com/html/",
+                params={"q": query},
+                headers=_html_headers(),
+                timeout=REQUEST_TIMEOUT,
+            )
+            response.raise_for_status()
+            if "anomaly-modal" in response.text:
+                return [], None
+            return _parse_ddg_results(response.text, max_results), None
+        except requests.RequestException as exc:
+            return [], f"DuckDuckGo search failed: {exc}"
+
+    def _bing() -> tuple[list[dict[str, str]], str | None]:
+        try:
+            response = _http().get(
                 "https://www.bing.com/search",
                 params={"q": f"{query} {_QUERY_EXCLUSIONS}", "count": 10},
                 headers=_html_headers(),
                 timeout=REQUEST_TIMEOUT,
             )
             response.raise_for_status()
-            results.extend(
-                _parse_bing_results(
-                    response.text,
-                    max_results=max_results,
-                )
-            )
-        except requests.RequestException as e:
-            errors.append(f"Bing search failed: {e}")
+            return _parse_bing_results(response.text, max_results=max_results), None
+        except requests.RequestException as exc:
+            return [], f"Bing search failed: {exc}"
+
+    with ThreadPoolExecutor(max_workers=2) as pool:
+        futures = [pool.submit(_ddg), pool.submit(_bing)]
+        for future in as_completed(futures):
+            hits, error = future.result()
+            results.extend(hits)
+            if error:
+                errors.append(error)
 
     results = _dedupe_results(results, max_results)
 
@@ -285,7 +301,7 @@ def fetch_page(url: str, max_chars: int = 18000) -> dict[str, Any]:
         }
 
     try:
-        response = _session.get(
+        response = _http().get(
             url,
             headers=_html_headers(),
             timeout=REQUEST_TIMEOUT,
@@ -394,13 +410,18 @@ def get_source_domain(url: str) -> dict[str, Any]:
         }
 
 
-def _domain_matches(domain: str, suffix: str) -> bool:
-    return domain == suffix or domain.endswith("." + suffix)
-
-
 # ============================================================
 # 4. SOURCE AUTHORITY CHECK
 # ============================================================
+
+_TIER_TO_AUTHORITY = {
+    1: "very_high",
+    2: "high",
+    3: "medium",
+    4: "low",
+    5: "unknown",
+}
+
 
 def assess_source_authority(url: str) -> dict[str, Any]:
     """
@@ -412,52 +433,22 @@ def assess_source_authority(url: str) -> dict[str, Any]:
     It only provides metadata that the Fact Checker can use
     when evaluating evidence.
     """
+    from ..retrieval.authority import evaluate_source
 
     try:
-        parsed = urlparse(_unwrap_url(url))
-
-        domain = parsed.netloc.lower()
-
-        domain = domain.removeprefix("www.")
-
-        authority = "unknown"
-        reason = "No recognised authority classification."
-
-        if _domain_matches(domain, "nasa.gov"):
-            authority = "very_high"
-            reason = "NASA scientific/government source."
-
-        elif _domain_matches(domain, "noaa.gov"):
-            authority = "very_high"
-            reason = "NOAA scientific/government source."
-
-        elif _domain_matches(domain, "usgs.gov"):
-            authority = "very_high"
-            reason = "US Geological Survey source."
-
-        elif _domain_matches(domain, "ipcc.ch"):
-            authority = "very_high"
-            reason = "Intergovernmental scientific assessment body."
-
-        elif (
-            domain.endswith((".gov", ".gov.uk", ".ac.uk", ".edu"))
-            or ".ac." in domain
-        ):
-            authority = "high"
-            reason = "Government or academic domain."
-
-        elif domain.endswith(".org"):
-            authority = "medium"
-            reason = (
-                "Organisation/non-profit domain; "
-                "credentials require inspection."
-            )
-
+        result = evaluate_source(url)
+        if not result.get("success"):
+            return {
+                "success": False,
+                "error": result.get("error", "Could not classify source."),
+            }
+        tier = int(result.get("source_tier") or 4)
         return {
             "success": True,
-            "domain": domain,
-            "authority": authority,
-            "reason": reason,
+            "domain": result.get("host", ""),
+            "authority": _TIER_TO_AUTHORITY.get(tier, "unknown"),
+            "source_tier": tier,
+            "reason": result.get("reason", ""),
         }
 
     except (ValueError, TypeError, AttributeError) as e:
@@ -490,59 +481,41 @@ def find_independent_evidence(
         }
 
     claim = str(claim).strip()
-
     queries = [
-        f'"{claim}" scientific evidence',
-        f'"{claim}" NASA',
-        f'"{claim}" NOAA',
-        f'"{claim}" IPCC',
-        f'"{claim}" university research',
+        f"{claim} educational evidence",
+        f"{claim} university",
     ]
+    evidence: list[dict[str, Any]] = []
+    seen_domains: set[str] = set()
 
-    evidence = []
+    def _search(query: str) -> list[dict[str, str]]:
+        result = search_web(query=query, max_results=max_results)
+        if not result["success"]:
+            return []
+        return result["results"]
 
-    seen_domains = set()
+    with ThreadPoolExecutor(max_workers=2) as pool:
+        futures = [pool.submit(_search, query) for query in queries]
+        hits: list[dict[str, str]] = []
+        for future in as_completed(futures):
+            hits.extend(future.result())
 
-    for query in queries:
-
-        search_result = search_web(
-            query=query,
-            max_results=max_results,
-        )
-
-        if not search_result["success"]:
+    for result in hits:
+        url = result["url"]
+        domain_result = get_source_domain(url)
+        if not domain_result["success"]:
             continue
-
-        for result in search_result["results"]:
-
-            url = result["url"]
-
-            domain_result = get_source_domain(url)
-
-            if not domain_result["success"]:
-                continue
-
-            domain = domain_result["domain"]
-
-            # Avoid repeatedly returning the same organisation.
-            if domain in seen_domains:
-                continue
-
-            seen_domains.add(domain)
-
-            authority = assess_source_authority(url)
-
-            evidence.append({
-                "title": result["title"],
-                "url": url,
-                "domain": domain,
-                "snippet": result["snippet"],
-                "authority": authority,
-            })
-
-            if len(evidence) >= max_results:
-                break
-
+        domain = domain_result["domain"]
+        if domain in seen_domains:
+            continue
+        seen_domains.add(domain)
+        evidence.append({
+            "title": result["title"],
+            "url": url,
+            "domain": domain,
+            "snippet": result["snippet"],
+            "authority": assess_source_authority(url),
+        })
         if len(evidence) >= max_results:
             break
 
@@ -610,40 +583,102 @@ def compare_sources(
             "sources": [],
         }
 
-    sources = []
-
-    seen_domains = set()
-
+    unique_urls: list[str] = []
+    seen_domains: set[str] = set()
     for url in urls:
-
         domain_result = get_source_domain(url)
-
         if not domain_result["success"]:
             continue
-
         domain = domain_result["domain"]
-
         if domain in seen_domains:
             continue
-
         seen_domains.add(domain)
+        unique_urls.append(url)
 
-        page = fetch_page(
-            url,
-            max_chars=max_chars_per_source,
-        )
-
-        authority = assess_source_authority(url)
-
-        sources.append({
+    def _load(url: str) -> dict[str, Any]:
+        return {
             "url": url,
-            "domain": domain,
-            "authority": authority,
-            "page": page,
-        })
+            "domain": get_source_domain(url).get("domain", ""),
+            "authority": assess_source_authority(url),
+            "page": fetch_page(url, max_chars=max_chars_per_source),
+        }
+
+    if unique_urls:
+        with ThreadPoolExecutor(max_workers=min(4, len(unique_urls))) as pool:
+            sources = list(pool.map(_load, unique_urls))
+    else:
+        sources = []
 
     return {
         "success": True,
         "sources": sources,
         "source_count": len(sources),
+    }
+
+
+def _parse_claim_item(item: Any) -> dict[str, Any]:
+    if isinstance(item, dict):
+        claim = str(item.get("claim") or "").strip()
+        return {"claim": claim, "supplied": item}
+    text = str(item or "").strip()
+    if text.startswith("{"):
+        try:
+            data = json.loads(text)
+            if isinstance(data, dict):
+                return {
+                    "claim": str(data.get("claim") or text).strip(),
+                    "supplied": data,
+                }
+        except json.JSONDecodeError:
+            pass
+    return {"claim": text, "supplied": {"claim": text}}
+
+
+def verify_claims(claims: list[str]) -> dict[str, Any]:
+    """
+    Independently verify up to 3 claims in parallel.
+
+    For each claim: one search, then fetch the best independent page.
+    Prefer this over looping search_web / fetch_page per claim.
+    Do not treat sources supplied with the claim as already verified.
+    """
+    parsed = [_parse_claim_item(claim) for claim in (claims or [])]
+    parsed = [item for item in parsed if item["claim"]][:3]
+    if not parsed:
+        return {
+            "success": False,
+            "error": "At least one claim is required.",
+            "verifications": [],
+        }
+
+    def _verify(item: dict[str, Any]) -> dict[str, Any]:
+        claim = item["claim"]
+        search = search_web(query=claim, max_results=4)
+        results = search.get("results") or []
+        page = None
+        chosen = None
+        for result in results:
+            page = fetch_page(result["url"], max_chars=8000)
+            if page.get("success"):
+                chosen = result
+                break
+        chosen_authority = None
+        if chosen and chosen.get("url"):
+            chosen_authority = assess_source_authority(chosen["url"])
+        return {
+            "claim": claim,
+            "supplied_evidence": item.get("supplied") or {},
+            "search": search,
+            "chosen_source": chosen,
+            "chosen_source_authority": chosen_authority,
+            "page": page,
+        }
+
+    with ThreadPoolExecutor(max_workers=len(parsed)) as pool:
+        verifications = list(pool.map(_verify, parsed))
+
+    return {
+        "success": True,
+        "verifications": verifications,
+        "claim_count": len(verifications),
     }
