@@ -1,31 +1,20 @@
-import 'dart:ui';
-
 import 'package:flutter/material.dart';
 
-import 'screens/intake/intake_studio_screen.dart';
-import 'theme/syntra_theme.dart';
+import 'app.dart';
+import 'auth/auth_bootstrap.dart';
+import 'auth/firebase_config.dart';
+import 'auth/firebase_options_stub.dart' as stub;
 
-void main() {
-  runApp(const SyntraApp());
-}
+Future<void> main() async {
+  WidgetsFlutterBinding.ensureInitialized();
 
-class SyntraApp extends StatelessWidget {
-  const SyntraApp({super.key});
+  // Auth is optional. Options come from:
+  // 1. --dart-define-from-file=firebase.defines.json (preferred; see README)
+  // 2. gitignored lib/firebase_options.dart assigned to FirebaseConfig.localOptions
+  //    (FlutterFire output — do not commit; hook locally as in README Option B)
+  // The committed stub is always null. Missing options still boot the app.
+  FirebaseConfig.localOptions ??= stub.DefaultFirebaseOptions.currentPlatformOrNull;
 
-  @override
-  Widget build(BuildContext context) {
-    return MaterialApp(
-      title: 'SYNTRA',
-      debugShowCheckedModeBanner: false,
-      theme: SyntraTheme.light(),
-      scrollBehavior: const MaterialScrollBehavior().copyWith(
-        dragDevices: {
-          PointerDeviceKind.touch,
-          PointerDeviceKind.mouse,
-          PointerDeviceKind.trackpad,
-        },
-      ),
-      home: const IntakeStudioScreen(),
-    );
-  }
+  final auth = await bootstrapAuth();
+  runApp(SyntraApp(authService: auth));
 }

@@ -53,10 +53,13 @@ void main() {
     expect(prompt, contains('Topic: Quantum physics'));
     expect(prompt, contains('Learning Goal: Prepare for an exam'));
     expect(prompt, contains('Strict verification: no'));
+    expect(prompt, contains('Refresh cache: no'));
     expect(brief.isLaunchReady, isTrue);
 
     brief.setStrictVerification(true);
     expect(brief.toIntakePrompt(), contains('Strict verification: yes'));
+    brief.setRefreshCache(true);
+    expect(brief.toIntakePrompt(), contains('Refresh cache: yes'));
   });
 
   test('subject and topic lists are unique', () {

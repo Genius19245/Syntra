@@ -1,0 +1,12 @@
+```json
+{
+  "objectives": [
+    {"text": "Define magnetic flux in terms of field and area.", "type": "Knowledge"},
+    {"text": "Explain how a changing magnetic flux produces an induced EMF.", "type": "Understanding"},
+    {"text": "Calculate induced EMF from a rate of change of flux.", "type": "Application"}
+  ],
+  "missing": [
+    "Magnetic flux and flux density"
+  ]
+}
+```

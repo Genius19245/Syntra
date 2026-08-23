@@ -1,7 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 
+import '../../auth/widgets/sign_in_bar.dart';
 import '../../data/intake_catalog.dart';
+import '../../history/past_lessons_link.dart';
 import '../../models/learner_brief.dart';
 import '../../theme/syntra_palette.dart';
 import '../../theme/syntra_theme.dart';
@@ -9,6 +11,7 @@ import '../../widgets/glass_card.dart';
 import '../../widgets/mesh_background.dart';
 import '../../widgets/syntra_button.dart';
 import '../../widgets/syntra_shell.dart';
+import '../history/history_screen.dart';
 import '../run/agent_run_screen.dart';
 import 'widgets/intake_controls.dart';
 import 'widgets/landing_hero.dart';
@@ -72,6 +75,18 @@ class _IntakeStudioScreenState extends State<IntakeStudioScreen> {
     );
   }
 
+  void _openHistory() {
+    Navigator.of(context).push(
+      PageRouteBuilder(
+        pageBuilder: (context, animation, secondaryAnimation) =>
+            const HistoryScreen(),
+        transitionsBuilder: (context, animation, secondaryAnimation, child) {
+          return FadeTransition(opacity: animation, child: child);
+        },
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -92,6 +107,7 @@ class _IntakeStudioScreenState extends State<IntakeStudioScreen> {
     return LandingHero(
       key: const ValueKey('landing'),
       onCreate: () => setState(() => _composing = true),
+      onOpenHistory: _openHistory,
     );
   }
 
@@ -120,10 +136,19 @@ class _IntakeStudioScreenState extends State<IntakeStudioScreen> {
                 label: 'Home',
                 onPressed: () => setState(() => _composing = false),
               ),
-              trailing: SyntraButton(
-                label: _brief.isLaunchReady ? 'Write lesson' : 'Fill the brief',
-                enabled: _brief.isLaunchReady,
-                onPressed: _launch,
+              trailing: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  PastLessonsLink(onPressed: _openHistory),
+                  const SignInBar(),
+                  const SizedBox(width: 8),
+                  SyntraButton(
+                    label:
+                        _brief.isLaunchReady ? 'Write lesson' : 'Fill the brief',
+                    enabled: _brief.isLaunchReady,
+                    onPressed: _launch,
+                  ),
+                ],
               ),
             ),
           ),
@@ -412,6 +437,12 @@ class _BriefingCanvas extends StatelessWidget {
               enabled: brief.strictVerification,
               accent: accent,
               onChanged: brief.setStrictVerification,
+            ),
+            const SizedBox(height: 12),
+            RefreshTopicToggle(
+              enabled: brief.refreshCache,
+              accent: accent,
+              onChanged: brief.setRefreshCache,
             ),
           ],
         ),

@@ -49,8 +49,16 @@ class SyntraTopBar extends StatelessWidget {
               ),
             ],
           ),
-          const Spacer(),
-          ?trailing,
+          Expanded(
+            child: Align(
+              alignment: Alignment.centerRight,
+              child: FittedBox(
+                fit: BoxFit.scaleDown,
+                alignment: Alignment.centerRight,
+                child: trailing ?? const SizedBox.shrink(),
+              ),
+            ),
+          ),
         ],
       ),
     );

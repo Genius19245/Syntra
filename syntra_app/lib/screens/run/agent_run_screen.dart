@@ -1,8 +1,11 @@
 import 'package:flutter/material.dart';
 import 'package:uuid/uuid.dart';
 
+import '../../auth/auth_service.dart';
+import '../../history/lesson_store.dart';
 import '../../models/learner_brief.dart';
 import '../../models/research_origin.dart';
+import '../../progress/models.dart';
 import '../../services/adk_client.dart';
 import '../../theme/syntra_palette.dart';
 import '../../theme/syntra_theme.dart';
@@ -11,7 +14,7 @@ import '../../widgets/mesh_background.dart';
 import '../../widgets/syntra_mark.dart';
 import '../../widgets/syntra_markdown.dart';
 import '../../widgets/syntra_shell.dart';
-import '../result/curriculum_screen.dart';
+import '../result/lesson_ready_screen.dart';
 
 class PipelineStage {
   const PipelineStage({
@@ -32,9 +35,14 @@ class PipelineStage {
 enum StageStatus { pending, active, complete, skipped }
 
 class AgentRunScreen extends StatefulWidget {
-  const AgentRunScreen({super.key, required this.brief});
+  const AgentRunScreen({
+    super.key,
+    required this.brief,
+    this.fromHistory = false,
+  });
 
   final LearnerBrief brief;
+  final bool fromHistory;
 
   @override
   State<AgentRunScreen> createState() => _AgentRunScreenState();
@@ -89,9 +97,21 @@ class _AgentRunScreenState extends State<AgentRunScreen> {
       authors: ['learning_objectives_agent'],
     ),
     PipelineStage(
+      id: 'lesson',
+      label: 'Lesson plan',
+      detail: 'Order the timed teaching sequence',
+      authors: ['lesson_planner_agent'],
+    ),
+    PipelineStage(
+      id: 'slides',
+      label: 'Slides',
+      detail: 'Turn the sequence into board-ready slides',
+      authors: ['slide_agent'],
+    ),
+    PipelineStage(
       id: 'curriculum',
       label: 'Curriculum',
-      detail: 'Sequence the lesson a teacher can teach',
+      detail: 'Assemble the teachable brief',
       authors: ['curriculum_agent', 'syntra_orchestrator'],
     ),
   ];
@@ -245,13 +265,50 @@ class _AgentRunScreenState extends State<AgentRunScreen> {
         );
       }
 
+      final pipeline = PipelineTexts.fromAuthors(
+        completeByAuthor,
+        curriculum: _curriculum,
+        knownKnowledge: widget.brief.priorKnowledge,
+      );
+      final teacherPayload = <String, dynamic>{
+        if (pipeline.learningObjectives != null)
+          'learningObjectives': pipeline.learningObjectives,
+        if (pipeline.prerequisiteAnalysis != null)
+          'prerequisiteAnalysis': pipeline.prerequisiteAnalysis,
+        if (pipeline.lessonPlan != null) 'lessonPlan': pipeline.lessonPlan,
+        if (pipeline.slides != null) 'slides': pipeline.slides,
+        if (pipeline.assessment != null) 'assessment': pipeline.assessment,
+        if (pipeline.knownKnowledge != null)
+          'knownKnowledge': pipeline.knownKnowledge,
+      };
+
+      try {
+        await LessonStore.instance.saveProducedLesson(
+          brief: widget.brief,
+          markdown: _curriculum,
+          origin: _origin,
+          quizPayload: pipeline.assessment == null
+              ? null
+              : {'markdown': pipeline.assessment},
+          teacherPayload: teacherPayload.isEmpty ? null : teacherPayload,
+          namespace: AuthScope.maybeOf(context)?.historyNamespace ??
+              AuthService.guestNamespace,
+        );
+      } catch (_) {
+        // History is local and best-effort; still show the curriculum.
+      }
+
+      if (!mounted) return;
       Navigator.of(context).pushReplacement(
         PageRouteBuilder(
           pageBuilder: (context, animation, secondaryAnimation) =>
-              CurriculumScreen(
+              LessonReadyScreen(
             brief: widget.brief,
             markdown: _curriculum,
             origin: _origin,
+            originBadge: _origin?.known == true ? _origin!.badge : null,
+            fromHistory: widget.fromHistory,
+            pipeline: pipeline,
           ),
           transitionsBuilder: (context, animation, secondaryAnimation, child) {
             return FadeTransition(opacity: animation, child: child);
@@ -284,7 +341,7 @@ class _AgentRunScreenState extends State<AgentRunScreen> {
               children: [
                 SyntraTopBar(
                   leading: SyntraBackButton(
-                    label: 'Brief',
+                    label: widget.fromHistory ? 'Past lessons' : 'Brief',
                     onPressed: () => Navigator.of(context).pop(),
                   ),
                 ),
@@ -330,7 +387,7 @@ class _AgentRunScreenState extends State<AgentRunScreen> {
                 Expanded(
                   child: split
                       ? Row(
-                          crossAxisAlignment: CrossAxisAlignment.start,
+                          crossAxisAlignment: CrossAxisAlignment.stretch,
                           children: [
                             SizedBox(
                               width: 340,
@@ -338,6 +395,7 @@ class _AgentRunScreenState extends State<AgentRunScreen> {
                                 stages: stages,
                                 status: _status,
                                 accent: _accent,
+                                expand: true,
                               ),
                             ),
                             const SizedBox(width: 20),
@@ -391,20 +449,34 @@ class _PipelineCard extends StatelessWidget {
     required this.stages,
     required this.status,
     required this.accent,
+    this.expand = false,
   });
 
   final List<PipelineStage> stages;
   final Map<String, StageStatus> status;
   final Color accent;
+  final bool expand;
 
   @override
   Widget build(BuildContext context) {
+    final steps = <Widget>[
+      for (var index = 0; index < stages.length; index++)
+        _PipelineRow(
+          index: index + 1,
+          stage: stages[index],
+          status: status[stages[index].id] ?? StageStatus.pending,
+          accent: accent,
+          isLast: index == stages.length - 1,
+        ),
+    ];
+
     return GlassCard(
       glow: accent,
+      expand: expand,
       padding: const EdgeInsets.fromLTRB(20, 20, 20, 8),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
-        mainAxisSize: MainAxisSize.min,
+        mainAxisSize: expand ? MainAxisSize.max : MainAxisSize.min,
         children: [
           Text(
             'PIPELINE PROGRESS',
@@ -413,14 +485,17 @@ class _PipelineCard extends StatelessWidget {
                 ),
           ),
           const SizedBox(height: 16),
-          for (var index = 0; index < stages.length; index++)
-            _PipelineRow(
-              index: index + 1,
-              stage: stages[index],
-              status: status[stages[index].id] ?? StageStatus.pending,
-              accent: accent,
-              isLast: index == stages.length - 1,
-            ),
+          if (expand)
+            Expanded(
+              child: SingleChildScrollView(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: steps,
+                ),
+              ),
+            )
+          else
+            ...steps,
         ],
       ),
     );

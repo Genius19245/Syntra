@@ -1,16 +1,25 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 
+import '../../../auth/auth_service.dart';
+import '../../../auth/widgets/sign_in_bar.dart';
+import '../../../history/past_lessons_link.dart';
 import '../../../theme/syntra_palette.dart';
 import '../../../theme/syntra_theme.dart';
 import '../../../widgets/syntra_button.dart';
 import '../../../widgets/syntra_mark.dart';
 import '../../../widgets/syntra_shell.dart';
+import '../../auth/sign_in_screen.dart';
 
 class LandingHero extends StatelessWidget {
-  const LandingHero({super.key, required this.onCreate});
+  const LandingHero({
+    super.key,
+    required this.onCreate,
+    required this.onOpenHistory,
+  });
 
   final VoidCallback onCreate;
+  final VoidCallback onOpenHistory;
 
   @override
   Widget build(BuildContext context) {
@@ -20,9 +29,17 @@ class LandingHero extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          const SyntraPageFrame(
-            padding: EdgeInsets.fromLTRB(28, 12, 28, 0),
-            child: SyntraTopBar(),
+          SyntraPageFrame(
+            padding: const EdgeInsets.fromLTRB(28, 12, 28, 0),
+            child: SyntraTopBar(
+              trailing: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  PastLessonsLink(onPressed: onOpenHistory),
+                  const SignInBar(),
+                ],
+              ),
+            ),
           ),
           Expanded(
             child: SyntraPageFrame(
@@ -34,7 +51,10 @@ class LandingHero extends StatelessWidget {
                           flex: 6,
                           child: Align(
                             alignment: Alignment.centerLeft,
-                            child: _Copy(onCreate: onCreate),
+                            child: _Copy(
+                              onCreate: onCreate,
+                              onOpenHistory: onOpenHistory,
+                            ),
                           ),
                         ),
                         const SizedBox(width: 36),
@@ -43,7 +63,10 @@ class LandingHero extends StatelessWidget {
                     )
                   : ListView(
                       children: [
-                        _Copy(onCreate: onCreate),
+                        _Copy(
+                          onCreate: onCreate,
+                          onOpenHistory: onOpenHistory,
+                        ),
                         const SizedBox(height: 32),
                         const _PreviewPanel(),
                       ],
@@ -57,9 +80,10 @@ class LandingHero extends StatelessWidget {
 }
 
 class _Copy extends StatelessWidget {
-  const _Copy({required this.onCreate});
+  const _Copy({required this.onCreate, required this.onOpenHistory});
 
   final VoidCallback onCreate;
+  final VoidCallback onOpenHistory;
 
   @override
   Widget build(BuildContext context) {
@@ -107,11 +131,24 @@ class _Copy extends StatelessWidget {
               ),
             ).animate().fadeIn(delay: 140.ms),
             const SizedBox(height: 32),
-            SyntraButton(
-              label: 'Create New Lesson',
-              icon: Icons.add,
-              onPressed: onCreate,
+            Wrap(
+              spacing: 12,
+              runSpacing: 12,
+              children: [
+                SyntraButton(
+                  label: 'Create New Lesson',
+                  icon: Icons.add,
+                  onPressed: onCreate,
+                ),
+                SyntraButton(
+                  label: 'Past lessons',
+                  icon: Icons.history_rounded,
+                  filled: false,
+                  onPressed: onOpenHistory,
+                ),
+              ],
             ).animate().fadeIn(delay: 200.ms).slideY(begin: 0.12),
+            const _OptionalSignInHint(),
             const SizedBox(height: 28),
             Wrap(
               spacing: 18,
@@ -124,6 +161,50 @@ class _Copy extends StatelessWidget {
             ).animate().fadeIn(delay: 260.ms),
           ],
         ),
+    );
+  }
+}
+
+class _OptionalSignInHint extends StatelessWidget {
+  const _OptionalSignInHint();
+
+  @override
+  Widget build(BuildContext context) {
+    final auth = AuthScope.maybeOf(context);
+    if (auth?.isSignedIn == true) {
+      return const SizedBox.shrink();
+    }
+
+    return Padding(
+      padding: const EdgeInsets.only(top: 14),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          TextButton(
+            onPressed: () => openSignInPage(context, auth: auth),
+            style: TextButton.styleFrom(
+              padding: EdgeInsets.zero,
+              foregroundColor: SyntraPalette.rust,
+            ),
+            child: Text(
+              'Sign in to keep lessons across devices',
+              style: SyntraTheme.sans(
+                color: SyntraPalette.rust,
+                fontWeight: FontWeight.w700,
+                fontSize: 14,
+              ),
+            ),
+          ),
+          Text(
+            'Optional — skip and continue as a guest.',
+            style: SyntraTheme.sans(
+              color: SyntraPalette.inkMuted,
+              fontSize: 13,
+              fontWeight: FontWeight.w500,
+            ),
+          ),
+        ],
+      ),
     );
   }
 }

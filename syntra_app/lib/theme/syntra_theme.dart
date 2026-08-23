@@ -27,7 +27,7 @@ abstract final class SyntraTheme {
     double? height,
     double? letterSpacing,
   }) {
-    return GoogleFonts.plusJakartaSans(
+    return GoogleFonts.sourceSerif4(
       color: color,
       fontSize: fontSize,
       fontWeight: fontWeight,

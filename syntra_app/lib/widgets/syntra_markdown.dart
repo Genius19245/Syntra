@@ -3,6 +3,9 @@ import 'package:flutter_markdown/flutter_markdown.dart';
 
 import '../theme/syntra_palette.dart';
 import '../theme/syntra_theme.dart';
+import 'syntra_math.dart';
+
+export 'live_draft.dart';
 
 abstract final class SyntraMarkdown {
   static MarkdownStyleSheet styleSheet(Color accent) {
@@ -76,12 +79,7 @@ abstract final class SyntraMarkdown {
       listIndent: 22,
       listBulletPadding: const EdgeInsets.only(right: 8),
       horizontalRuleDecoration: BoxDecoration(
-        border: Border(
-          top: BorderSide(
-            color: SyntraPalette.stroke,
-            width: 1,
-          ),
-        ),
+        border: Border(top: BorderSide(color: SyntraPalette.stroke, width: 1)),
       ),
       blockquote: muted.copyWith(fontStyle: FontStyle.italic),
       blockquoteDecoration: BoxDecoration(
@@ -93,11 +91,7 @@ abstract final class SyntraMarkdown {
         ),
       ),
       blockquotePadding: const EdgeInsets.fromLTRB(14, 10, 14, 10),
-      code: SyntraTheme.sans(
-        color: accent,
-        fontSize: 13,
-        height: 1.4,
-      ),
+      code: SyntraTheme.sans(color: accent, fontSize: 13, height: 1.4),
       codeblockDecoration: BoxDecoration(
         color: SyntraPalette.voidMid,
         borderRadius: BorderRadius.circular(12),
@@ -116,11 +110,11 @@ abstract final class SyntraMarkdown {
       ),
       tableBorder: TableBorder.all(color: SyntraPalette.stroke, width: 1),
       tableHeadAlign: TextAlign.left,
-      tableCellsPadding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
-      a: muted.copyWith(
-        color: accent,
-        decoration: TextDecoration.underline,
+      tableCellsPadding: const EdgeInsets.symmetric(
+        horizontal: 10,
+        vertical: 8,
       ),
+      a: muted.copyWith(color: accent, decoration: TextDecoration.underline),
     );
   }
 }
@@ -144,69 +138,29 @@ class SyntraMarkdownView extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final sheet = SyntraMarkdown.styleSheet(accent);
+    final rendered = polishPlainMath(data);
+    final builders = syntraLatexBuilders(color: SyntraPalette.ink);
+    final inlines = syntraLatexInlineSyntaxes();
+    final blocks = syntraLatexBlockSyntaxes();
     if (shrinkWrap) {
       return MarkdownBody(
-        data: data,
+        data: rendered,
         selectable: selectable,
         styleSheet: sheet,
+        builders: builders,
+        inlineSyntaxes: inlines,
+        blockSyntaxes: blocks,
+        fitContent: true,
       );
     }
     return Markdown(
-      data: data,
+      data: rendered,
       selectable: selectable,
       padding: padding,
       styleSheet: sheet,
-    );
-  }
-}
-
-class SyntraLiveMarkdown extends StatefulWidget {
-  const SyntraLiveMarkdown({
-    super.key,
-    required this.data,
-    required this.accent,
-  });
-
-  final String data;
-  final Color accent;
-
-  @override
-  State<SyntraLiveMarkdown> createState() => _SyntraLiveMarkdownState();
-}
-
-class _SyntraLiveMarkdownState extends State<SyntraLiveMarkdown> {
-  final _controller = ScrollController();
-
-  @override
-  void didUpdateWidget(covariant SyntraLiveMarkdown oldWidget) {
-    super.didUpdateWidget(oldWidget);
-    if (oldWidget.data == widget.data) return;
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      if (!mounted || !_controller.hasClients) return;
-      _controller.animateTo(
-        _controller.position.maxScrollExtent,
-        duration: const Duration(milliseconds: 240),
-        curve: Curves.easeOutCubic,
-      );
-    });
-  }
-
-  @override
-  void dispose() {
-    _controller.dispose();
-    super.dispose();
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    return SingleChildScrollView(
-      controller: _controller,
-      padding: const EdgeInsets.only(right: 8, bottom: 8),
-      child: SyntraMarkdownView(
-        data: widget.data,
-        accent: widget.accent,
-        shrinkWrap: true,
-      ),
+      builders: builders,
+      inlineSyntaxes: inlines,
+      blockSyntaxes: blocks,
     );
   }
 }

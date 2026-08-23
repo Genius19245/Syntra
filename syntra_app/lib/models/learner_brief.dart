@@ -13,6 +13,7 @@ class LearnerBrief extends ChangeNotifier {
   String priorKnowledge = '';
   String? depth;
   bool strictVerification = false;
+  bool refreshCache = false;
 
   EducationLevelSpec? get level =>
       levelId == null ? null : IntakeCatalog.levelById(levelId!);
@@ -159,6 +160,42 @@ class LearnerBrief extends ChangeNotifier {
     notifyListeners();
   }
 
+  void setRefreshCache(bool value) {
+    refreshCache = value;
+    notifyListeners();
+  }
+
+  Map<String, dynamic> toSnapshot() {
+    return {
+      'levelId': levelId,
+      'board': board,
+      'customBoard': customBoard,
+      'subject': subject,
+      'customSubject': customSubject,
+      'topic': topic,
+      'goalId': goalId,
+      'priorKnowledge': priorKnowledge,
+      'depth': depth,
+      'strictVerification': strictVerification,
+      'refreshCache': refreshCache,
+    };
+  }
+
+  static LearnerBrief fromSnapshot(Map<String, dynamic> data) {
+    return LearnerBrief()
+      ..levelId = data['levelId'] as String?
+      ..board = data['board'] as String?
+      ..customBoard = data['customBoard'] as String?
+      ..subject = data['subject'] as String?
+      ..customSubject = (data['customSubject'] as String?) ?? ''
+      ..topic = (data['topic'] as String?) ?? ''
+      ..goalId = data['goalId'] as String?
+      ..priorKnowledge = (data['priorKnowledge'] as String?) ?? ''
+      ..depth = data['depth'] as String?
+      ..strictVerification = data['strictVerification'] == true
+      ..refreshCache = data['refreshCache'] == true;
+  }
+
   String toIntakePrompt() {
     final prior = priorKnowledge.trim().isEmpty
         ? 'Not specified'
@@ -167,6 +204,7 @@ class LearnerBrief extends ChangeNotifier {
     final goalLine = goal?.label ?? 'Not specified';
     final depthLine = depth ?? 'Not specified';
     final strictLine = strictVerification ? 'yes' : 'no';
+    final refreshLine = refreshCache ? 'yes' : 'no';
 
     return '''
 SYNTRA Intake Brief
@@ -178,6 +216,7 @@ Learning Goal: $goalLine
 Prior Knowledge: $prior
 Required Depth: $depthLine
 Strict verification: $strictLine
+Refresh cache: $refreshLine
 
 Use these fields exactly. Do not infer a different level, board, subject, topic, goal, or depth.
 ''';

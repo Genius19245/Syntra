@@ -31,6 +31,24 @@ void main() {
     expect(origin.badge, 'Researched live');
   });
 
+  test('shows hit_count from SSE JSON without talking to Firestore', () {
+    const text = '''
+{"research_method": {"rag_used": true, "web_used": false, "retrieval_mode": "RAG_ONLY"}, "hit_count": 12}
+''';
+    final origin = ResearchOrigin.parse(text)!;
+    expect(origin.fromCache, isTrue);
+    expect(origin.hitCount, 12);
+    expect(origin.badge, 'Reused from SYNTRA cache · 12 hits');
+  });
+
+  test('ignores missing hit_count', () {
+    const text =
+        '{"research_method": {"rag_used": true, "web_used": false, "retrieval_mode": "RAG_ONLY"}}';
+    final origin = ResearchOrigin.parse(text)!;
+    expect(origin.hitCount, isNull);
+    expect(origin.badge, 'Reused from SYNTRA cache');
+  });
+
   test('AdkEvent captures functionCall names', () {
     final event = AdkEvent.fromJson({
       'author': 'research_agent',

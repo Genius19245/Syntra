@@ -27,6 +27,7 @@ class FeaturePills extends StatelessWidget {
       ('Topic', brief.topic.trim().isNotEmpty),
       ('Intent', brief.goalId != null),
       if (brief.strictVerification) ('Strict', true),
+      if (brief.refreshCache) ('Refresh', true),
     ];
 
     return Wrap(
@@ -494,6 +495,8 @@ class LiveDossier extends StatelessWidget {
     required this.priorKnowledge,
     required this.accent,
     required this.ready,
+    this.showIdentity = true,
+    this.embedded = false,
   });
 
   final String? level;
@@ -505,17 +508,16 @@ class LiveDossier extends StatelessWidget {
   final String priorKnowledge;
   final Color accent;
   final bool ready;
+  final bool showIdentity;
+  final bool embedded;
 
   @override
   Widget build(BuildContext context) {
     final title = topic.trim().isEmpty ? 'Curriculum brief' : topic.trim();
-    return GlassCard(
-      glow: accent,
-      selected: ready,
-      padding: const EdgeInsets.fromLTRB(22, 20, 22, 22),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
+    final body = Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        if (!embedded)
           Row(
             children: [
               Text(
@@ -531,12 +533,13 @@ class LiveDossier extends StatelessWidget {
               ),
             ],
           ),
-          const SizedBox(height: 16),
+        if (showIdentity) ...[
+          if (!embedded) const SizedBox(height: 16),
           Text(
             title,
             style: SyntraTheme.sans(
               color: SyntraPalette.navy,
-              fontSize: 26,
+              fontSize: embedded ? 18 : 26,
               height: 1.15,
               fontWeight: FontWeight.w800,
             ),
@@ -552,15 +555,23 @@ class LiveDossier extends StatelessWidget {
             ],
           ),
           const SizedBox(height: 18),
-          _DossierRow(label: 'Goal', value: goal, accent: accent),
-          _DossierRow(label: 'Depth', value: depth, accent: accent),
-          _DossierRow(
-            label: 'Prior',
-            value: priorKnowledge.trim().isEmpty ? null : priorKnowledge.trim(),
-            accent: accent,
-          ),
-        ],
-      ),
+        ] else if (!embedded)
+          const SizedBox(height: 16),
+        _DossierRow(label: 'Goal', value: goal, accent: accent),
+        _DossierRow(label: 'Depth', value: depth, accent: accent),
+        _DossierRow(
+          label: 'Prior',
+          value: priorKnowledge.trim().isEmpty ? null : priorKnowledge.trim(),
+          accent: accent,
+        ),
+      ],
+    );
+    if (embedded) return body;
+    return GlassCard(
+      glow: accent,
+      selected: ready,
+      padding: const EdgeInsets.fromLTRB(22, 20, 22, 22),
+      child: body,
     );
   }
 }
@@ -667,6 +678,70 @@ class StrictModeToggle extends StatelessWidget {
                 const SizedBox(height: 4),
                 Text(
                   'Turn the Fact Checker on. Slower, stricter claims.',
+                  style: Theme.of(context).textTheme.bodyMedium,
+                ),
+              ],
+            ),
+          ),
+          const SizedBox(width: 12),
+          Container(
+            width: 42,
+            height: 26,
+            padding: const EdgeInsets.all(3),
+            decoration: BoxDecoration(
+              color: enabled ? accent : SyntraPalette.stroke,
+              borderRadius: BorderRadius.circular(999),
+            ),
+            child: Align(
+              alignment: enabled ? Alignment.centerRight : Alignment.centerLeft,
+              child: Container(
+                width: 20,
+                height: 20,
+                decoration: const BoxDecoration(
+                  color: SyntraPalette.paper,
+                  shape: BoxShape.circle,
+                ),
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class RefreshTopicToggle extends StatelessWidget {
+  const RefreshTopicToggle({
+    super.key,
+    required this.enabled,
+    required this.accent,
+    required this.onChanged,
+  });
+
+  final bool enabled;
+  final Color accent;
+  final ValueChanged<bool> onChanged;
+
+  @override
+  Widget build(BuildContext context) {
+    return GlassCard(
+      selected: enabled,
+      glow: accent,
+      padding: const EdgeInsets.fromLTRB(18, 16, 18, 16),
+      onTap: () => onChanged(!enabled),
+      child: Row(
+        children: [
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  'Refresh this topic',
+                  style: Theme.of(context).textTheme.titleMedium,
+                ),
+                const SizedBox(height: 4),
+                Text(
+                  'Skip the SYNTRA cache and research the web again.',
                   style: Theme.of(context).textTheme.bodyMedium,
                 ),
               ],

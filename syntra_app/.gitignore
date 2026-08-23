@@ -43,3 +43,10 @@ app.*.map.json
 /android/app/debug
 /android/app/profile
 /android/app/release
+
+# Local Firebase Auth (never commit secrets or generated options)
+lib/firebase_options.dart
+firebase.defines.json
+google-services.json
+GoogleService-Info.plist
+
