@@ -26,9 +26,9 @@ build/
 *.db
 
 # Generated RAG corpus (seed samples stay tracked)
-research_agent/knowledge/previous_research/**
-!research_agent/knowledge/previous_research/.gitkeep
-!research_agent/knowledge/previous_research/README.md
+backend/research_agent/knowledge/previous_research/**
+!backend/research_agent/knowledge/previous_research/.gitkeep
+!backend/research_agent/knowledge/previous_research/README.md
 
 # Local vector / embedding artifacts (Firestore holds production vectors)
 **/chroma*/
@@ -52,10 +52,10 @@ ui-debug.log
 **/firebase_options.dart
 .firestore-rules-findings.md
 
-# Flutter caches (syntra_app/.gitignore also covers these)
-syntra_app/build/
-syntra_app/.dart_tool/
-syntra_app/.flutter-plugins-dependencies
+# Flutter caches (frontends/syntra_app/.gitignore also covers these)
+frontends/syntra_app/build/
+frontends/syntra_app/.dart_tool/
+frontends/syntra_app/.flutter-plugins-dependencies
 
 # Tooling
 .ruff_cache/

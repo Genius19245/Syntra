@@ -1,6 +1,6 @@
 .git
 .venv
-syntra_app
+frontends
 **/__pycache__
 **/.adk
 **/.env

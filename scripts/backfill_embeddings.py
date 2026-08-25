@@ -6,6 +6,7 @@ Firebase project files.
 
   python scripts/backfill_embeddings.py
   python scripts/backfill_embeddings.py --dry-run
+  python scripts/backfill_embeddings.py --clusters
 """
 
 from __future__ import annotations
@@ -15,10 +16,11 @@ import sys
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
-if str(ROOT) not in sys.path:
-    sys.path.insert(0, str(ROOT))
+BACKEND = ROOT / "backend"
+if str(BACKEND) not in sys.path:
+    sys.path.insert(0, str(BACKEND))
 
-from research_agent.rag.firebase_cache import default_cache  # noqa: E402
+from research_agent.rag.firebase_cache import default_cache
 
 
 def main() -> int:
@@ -36,9 +38,14 @@ def main() -> int:
         default=400,
         help="Maximum cache documents to scan.",
     )
+    parser.add_argument(
+        "--clusters",
+        action="store_true",
+        help="Remap topic_cluster where aliases resolve a stable id.",
+    )
     args = parser.parse_args()
     result = default_cache().backfill_embeddings(
-        limit=args.limit, dry_run=args.dry_run
+        limit=args.limit, dry_run=args.dry_run, clusters=args.clusters
     )
     scanned = result.get("scanned", 0)
     missing = result.get("missing", 0)

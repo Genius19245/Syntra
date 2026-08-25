@@ -15,22 +15,23 @@ pip install -r requirements.txt
 ./scripts/dev.sh
 ```
 
-`./scripts/dev.sh` starts ADK on port 8000 and launches the Flutter app against that local server.
+`./scripts/dev.sh` starts ADK on port 8000 (apps from `backend/`) and launches the Flutter app against that local server. `pytest.ini` puts `backend/` on `PYTHONPATH`.
 
 To run the app against the deployed orchestrator instead:
 
 ```bash
-cd syntra_app
+cd frontends/syntra_app
 flutter run -d chrome
 ```
 
 ## Layout
 
-- `syntra_app/` — teacher studio (Flutter)
-- `syntra_orchestrator/` — ADK root agent
-- `research_agent/` — research, RAG retrieval, optional fact checking
-- `curriculum_agent/` — profile, prerequisites, curriculum
-- `learning_objectives_agent/` — measurable outcomes
+- `frontends/syntra_app/` — teacher studio (Flutter)
+- `frontends/preview/` — static landing preview
+- `backend/syntra_orchestrator/` — ADK root agent
+- `backend/research_agent/` — research, RAG retrieval, optional fact checking
+- `backend/curriculum_agent/` — profile, prerequisites, curriculum, lesson plan
+- `backend/learning_objectives_agent/` — measurable outcomes
 - `tests/` — pytest suite (`pytest`)
 
 Local `.env` files, generated research markdown, and Firebase project files stay out of git.

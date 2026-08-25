@@ -91,4 +91,3 @@ def test_gather_sources_skips_when_cache_already_covered():
     state = {"retrieval_mode": "RAG_ONLY"}
     result = gather_sources("ionic bonding GCSE", tool_context=state)
     assert "Skipped web research" in result
-

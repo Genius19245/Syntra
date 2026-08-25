@@ -11,12 +11,6 @@ Highest leverage: lesson playback and assessments on top of the package already 
 - Show cache hit vs web research in the UI (“reused from SYNTRA cache” vs “researched live”).
 - Time-to-live or “refresh this topic” so stale cache packages can be re-researched.
 
-## Teaching product
-
-- Teacher Agent that actually delivers the curriculum (slides / spoken lesson) — the product still stops at the curriculum plan.
-- Assessment Agent: quizzes from the research package, not invented facts.
-- Slide / lesson export (PDF or Google Slides) from the curriculum structure.
-- Save and reopen past lessons (per-teacher history; still do not let the Flutter client write the shared cache).
 
 ## Learner
 

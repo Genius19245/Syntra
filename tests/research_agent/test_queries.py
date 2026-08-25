@@ -4,7 +4,12 @@ from research_agent.retrieval.queries import (
     generate_research_queries,
     normalize_query,
 )
-from research_agent.retrieval.session import remember_query, remember_url, seen_queries, seen_urls
+from research_agent.retrieval.session import (
+    remember_query,
+    remember_url,
+    seen_queries,
+    seen_urls,
+)
 
 
 def test_normalize_and_dedupe_queries():

@@ -20,7 +20,6 @@ from research_agent.schema import (
     SourceRecord,
 )
 
-
 ALPHA = [1.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0]
 BETA = [0.0, 1.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0]
 
@@ -51,13 +50,13 @@ class BoomEmbedder:
 
 
 def _package(**overrides) -> ResearchPackage:
-    data = dict(
-        topic="Ohm's law",
-        subject="physics",
-        education_level="GCSE",
-        exam_board="",
-        key_concepts=["current", "voltage", "resistance"],
-        claims=[
+    data = {
+        "topic": "Ohm's law",
+        "subject": "physics",
+        "education_level": "GCSE",
+        "exam_board": "",
+        "key_concepts": ["current", "voltage", "resistance"],
+        "claims": [
             PackageClaim(
                 claim="Ohm's law states that V = IR for an ohmic conductor.",
                 evidence="Voltage is proportional to current at constant temperature.",
@@ -74,14 +73,14 @@ def _package(**overrides) -> ResearchPackage:
                 ),
             )
         ],
-        research_method=ResearchMethod(
+        "research_method": ResearchMethod(
             rag_used=False,
             web_used=True,
             fact_check_used=True,
             freshness="STABLE",
             retrieval_mode="WEB_ONLY",
         ),
-    )
+    }
     data.update(overrides)
     return ResearchPackage.model_validate(data)
 
@@ -108,6 +107,17 @@ def test_store_writes_embedding_from_injected_embedder():
     assert doc["embedding"] == ALPHA
     assert doc["embedding_model"]
     assert "RETRIEVAL_DOCUMENT" in stub.calls
+
+
+def test_lookup_does_not_reembed_the_same_query():
+    stub = StubEmbedder({"ohm": ALPHA})
+    cache = ResearchCache(MemoryBackend(), embedder=stub)
+    cache.store(_package())
+    cache.lookup("Ohm's law", subject="physics", education_level="GCSE")
+    after_first = stub.calls.count("RETRIEVAL_QUERY")
+    assert after_first == 1
+    cache.lookup("Ohm's law", subject="physics", education_level="GCSE")
+    assert stub.calls.count("RETRIEVAL_QUERY") == after_first
 
 
 def test_lookup_ranks_by_cosine_when_embeddings_exist():
@@ -137,7 +147,9 @@ def test_lookup_ranks_by_cosine_when_embeddings_exist():
                             source_tier=2,
                         )
                     ],
-                    verification=ClaimVerification(verdict="VERIFIED", confidence="HIGH"),
+                    verification=ClaimVerification(
+                        verdict="VERIFIED", confidence="HIGH"
+                    ),
                 )
             ],
         )
@@ -157,7 +169,9 @@ def test_lookup_ranks_by_cosine_when_embeddings_exist():
                             source_tier=2,
                         )
                     ],
-                    verification=ClaimVerification(verdict="VERIFIED", confidence="HIGH"),
+                    verification=ClaimVerification(
+                        verdict="VERIFIED", confidence="HIGH"
+                    ),
                 )
             ],
         )
@@ -193,7 +207,9 @@ def test_exact_key_still_wins_over_cosine():
                             source_tier=3,
                         )
                     ],
-                    verification=ClaimVerification(verdict="VERIFIED", confidence="HIGH"),
+                    verification=ClaimVerification(
+                        verdict="VERIFIED", confidence="HIGH"
+                    ),
                 )
             ],
         )
@@ -232,22 +248,30 @@ def test_disable_embeddings_with_env_flag(monkeypatch):
 class RecordingBackend(MemoryBackend):
     def __init__(self) -> None:
         super().__init__()
-        self.nearest_calls: list[tuple[list[float], str, int]] = []
+        self.nearest_calls: list[tuple[list[float], str, str, int]] = []
+        self.list_cluster_calls = 0
         self.fail_nearest: bool | str = False
+
+    def list_clusters(self) -> list[dict]:
+        self.list_cluster_calls += 1
+        return super().list_clusters()
 
     def find_nearest(
         self,
         query_vector,
         *,
         subject="",
+        topic_cluster="",
         limit=10,
     ):
-        self.nearest_calls.append((list(query_vector), subject, limit))
+        self.nearest_calls.append((list(query_vector), subject, topic_cluster, limit))
         if self.fail_nearest is True:
             raise RuntimeError("vector index unavailable")
         if self.fail_nearest == "empty":
             return []
-        return super().find_nearest(query_vector, subject=subject, limit=limit)
+        return super().find_nearest(
+            query_vector, subject=subject, topic_cluster=topic_cluster, limit=limit
+        )
 
 
 class _FakeVector:
@@ -289,7 +313,9 @@ def test_lookup_uses_mocked_vector_search():
                             source_tier=2,
                         )
                     ],
-                    verification=ClaimVerification(verdict="VERIFIED", confidence="HIGH"),
+                    verification=ClaimVerification(
+                        verdict="VERIFIED", confidence="HIGH"
+                    ),
                 )
             ],
         )
@@ -309,7 +335,9 @@ def test_lookup_uses_mocked_vector_search():
                             source_tier=2,
                         )
                     ],
-                    verification=ClaimVerification(verdict="VERIFIED", confidence="HIGH"),
+                    verification=ClaimVerification(
+                        verdict="VERIFIED", confidence="HIGH"
+                    ),
                 )
             ],
         )
@@ -405,3 +433,66 @@ def test_firestore_backend_find_nearest_uses_cosine():
     assert hits[0]["prompt_key"] == "abc"
     assert hits[0]["subject"] == "physics"
 
+
+def test_known_cluster_passes_topic_cluster_into_find_nearest():
+    stub = StubEmbedder({"magnet": ALPHA, "magnetism": ALPHA})
+    backend = RecordingBackend()
+    cache = ResearchCache(backend, embedder=stub)
+    cache.store(_package(topic="magnets"))
+    assert backend.list_cluster_calls == 0
+    backend.nearest_calls.clear()
+    cache.lookup("magnetic fields", subject="physics", education_level="GCSE")
+    assert backend.list_cluster_calls == 0
+    clustered = [call for call in backend.nearest_calls if call[2] == "magnetism"]
+    unfiltered = [call for call in backend.nearest_calls if call[2] == ""]
+    assert len(clustered) == 1
+    assert unfiltered == []
+    assert clustered[0][1] == "physics"
+
+
+def test_unknown_cluster_does_not_filter_find_nearest_by_cluster():
+    stub = StubEmbedder({"quokka": ALPHA})
+    backend = RecordingBackend()
+    cache = ResearchCache(backend, embedder=stub)
+    cache.store(_package(topic="quokka taxonomy", subject="biology"))
+    cache.lookup("quokka taxonomy", subject="biology", education_level="GCSE")
+    assert backend.nearest_calls
+    clusters = {call[2] for call in backend.nearest_calls}
+    assert clusters == {""}
+
+
+def test_cluster_index_failure_falls_back_to_subject_only():
+    class ClusterFailBackend(RecordingBackend):
+        def find_nearest(self, query_vector, *, subject="", topic_cluster="", limit=10):
+            self.nearest_calls.append(
+                (list(query_vector), subject, topic_cluster, limit)
+            )
+            if topic_cluster:
+                raise RuntimeError("cluster vector index missing")
+            return MemoryBackend.find_nearest(
+                self,
+                query_vector,
+                subject=subject,
+                topic_cluster="",
+                limit=limit,
+            )
+
+    stub = StubEmbedder({"magnet": ALPHA, "magnetism": ALPHA})
+    backend = ClusterFailBackend()
+    cache = ResearchCache(backend, embedder=stub)
+    cache.store(_package(topic="magnets"))
+    hits = cache.lookup("magnets", subject="physics", education_level="GCSE")
+    assert hits
+    assert any(call[2] == "magnetism" for call in backend.nearest_calls)
+    assert any(call[2] == "" and call[1] == "physics" for call in backend.nearest_calls)
+
+
+def test_gcse_corpus_stays_narrow():
+    from research_agent.rag.firebase_cache import _document_corpus
+    from research_agent.rag.labels import label_prompt
+
+    labels = label_prompt("magnets", "physics", "GCSE")
+    corpus = _document_corpus(_package(topic="magnets"), labels).lower()
+    assert "undergraduate" not in corpus
+    assert "electromagnetic-induction" not in corpus
+    assert "a-level" not in corpus

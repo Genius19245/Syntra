@@ -1,0 +1,343 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>SYNTRA — product preview</title>
+  <meta name="robots" content="noindex" />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,600;9..144,700&family=Plus+Jakarta+Sans:wght@500;600;700;800&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="preview.css" />
+</head>
+<body>
+  <div class="mesh" aria-hidden="true">
+    <span class="blob rust"></span>
+    <span class="blob navy"></span>
+    <span class="blob peach"></span>
+  </div>
+
+  <div class="stage" id="stage">
+    <section class="scene scene-mark" data-scene="mark">
+      <div class="mark" aria-hidden="true">S</div>
+    </section>
+
+    <section class="scene scene-name" data-scene="name">
+      <div class="mark sm" aria-hidden="true">S</div>
+      <p class="wordmark">SYNTRA</p>
+    </section>
+
+    <section class="scene scene-app" data-scene="app">
+      <div class="app" id="app">
+        <header class="topbar" id="topbar">
+          <button class="back" id="back-btn" type="button">Home</button>
+          <div class="mark xs" aria-hidden="true">S</div>
+          <div class="brand">
+            <strong>SYNTRA</strong>
+            <small>Lesson Planner</small>
+          </div>
+          <nav id="nav">
+            <span data-nav="history">Past lessons</span>
+            <span data-nav="signin">Sign in</span>
+            <button type="button" class="ghost" id="nav-cta">Create New Lesson</button>
+          </nav>
+        </header>
+
+        <div class="views">
+          <div class="view" data-view="landing" id="view-landing">
+            <div class="landing">
+              <div class="hero-copy">
+                <span class="eyebrow">For teachers  ·  every subject</span>
+                <h1>Plan the lesson<br />you need tomorrow.</h1>
+                <p class="lede">SYNTRA researches the topic, checks the facts, and writes a curriculum a teacher can actually teach — at the right level, for the right board.</p>
+                <div class="hero-actions">
+                  <button class="cta" type="button">＋  Create New Lesson</button>
+                  <button class="ghost-btn" type="button">Past lessons</button>
+                </div>
+                <p class="signin-hint">Sign in to keep lessons across devices<br /><span>Optional — skip and continue as a guest.</span></p>
+                <div class="trust">
+                  <span><i></i>Research</span>
+                  <span><i></i>Fact-check</span>
+                  <span><i></i>Curriculum</span>
+                </div>
+              </div>
+              <aside class="hero-card">
+                <div class="dossier-head">
+                  <div class="mark xs">S</div>
+                  <strong>Lesson brief</strong>
+                  <span class="pill filled">Ready</span>
+                </div>
+                <h3>Coastal landscapes</h3>
+                <p class="muted">A GCSE Geography unit a teacher can walk into on Monday.</p>
+                <div class="chips">
+                  <span>Geography</span><span>GCSE</span><span>AQA</span>
+                </div>
+                <div class="preview-row done"><b></b><div><strong>Research</strong><small>Sources ranked and checked</small></div></div>
+                <div class="preview-row done"><b></b><div><strong>Prerequisites</strong><small>What the class must already know</small></div></div>
+                <div class="preview-row"><b></b><div><strong>Curriculum</strong><small>Sequenced lessons, ready to teach</small></div></div>
+              </aside>
+            </div>
+          </div>
+
+          <div class="view" data-view="studio" id="view-studio">
+            <div class="workspace">
+              <div class="canvas">
+                <h2>New lesson</h2>
+                <p class="sub">Select a level, board, and topic. SYNTRA writes a curriculum a teacher can walk into.</p>
+                <div class="pills" id="feature-pills">
+                  <span>Level</span><span>Board</span><span>Subject</span><span>Topic</span><span>Intent</span>
+                </div>
+                <div class="glass">
+                  <p class="kicker">01</p>
+                  <h3 class="section-title">Choose a level</h3>
+                  <div class="grid">
+                    <article class="tile" data-card="0" style="--dot:#4f6f8c"><i class="dot"></i><h3>Beginner</h3><p>First principles, no assumed fluency</p></article>
+                    <article class="tile" data-card="1" style="--dot:#c44f35"><i class="dot"></i><h3>Primary</h3><p>Curious, concrete, classroom-ready</p></article>
+                    <article class="tile" data-card="2" style="--dot:#c44f35"><i class="dot"></i><h3>GCSE</h3><p>Exam-ready structure and marks</p></article>
+                    <article class="tile" data-card="3" style="--dot:#b85a2a"><i class="dot"></i><h3>A-Level</h3><p>Depth, methods, and stretch</p></article>
+                    <article class="tile" data-card="4" style="--dot:#2f5f6e"><i class="dot"></i><h3>Undergraduate</h3><p>University rigor without the fog</p></article>
+                    <article class="tile" data-card="5" style="--dot:#6b4e7a"><i class="dot"></i><h3>Postgraduate</h3><p>Research depth and synthesis</p></article>
+                    <article class="tile" data-card="6" style="--dot:#3e4754"><i class="dot"></i><h3>Professional</h3><p>Applied, sharp, on the clock</p></article>
+                    <article class="tile" data-card="7" style="--dot:#c57a32"><i class="dot"></i><h3>Other</h3><p>Your own level, your own rules</p></article>
+                  </div>
+                  <div class="reveal" id="board-block">
+                    <p class="kicker">Board</p>
+                    <h3 class="section-title">Exam board</h3>
+                    <div class="chip-row" id="boards">
+                      <button type="button">AQA</button>
+                      <button type="button">Edexcel</button>
+                      <button type="button">OCR</button>
+                      <button type="button">WJEC</button>
+                      <button type="button">Cambridge</button>
+                    </div>
+                  </div>
+                </div>
+                <div class="glass reveal" id="subject-block">
+                  <p class="kicker">02</p>
+                  <h3 class="section-title">Subject</h3>
+                  <div class="chip-row" id="subjects">
+                    <button type="button">Mathematics</button>
+                    <button type="button">Biology</button>
+                    <button type="button">Chemistry</button>
+                    <button type="button">Physics</button>
+                    <button type="button">History</button>
+                    <button type="button">Geography</button>
+                    <button type="button">Computer Science</button>
+                  </div>
+                  <p class="kicker tight">03</p>
+                  <h3 class="section-title">Topic or chapter</h3>
+                  <div class="topic" id="topic-field"><span id="topic-text"></span><i class="caret"></i></div>
+                </div>
+              </div>
+              <aside class="dossier" id="dossier">
+                <div class="dossier-head">
+                  <p class="kicker">Lesson brief</p>
+                  <span class="pill" id="ready-pill">Draft</span>
+                </div>
+                <h3 id="dossier-title">Curriculum brief</h3>
+                <div class="chips" id="dossier-chips"></div>
+                <div class="row"><span>Goal</span><b id="d-goal">—</b></div>
+                <div class="row"><span>Depth</span><b id="d-depth">—</b></div>
+                <div class="row"><span>Prior</span><b id="d-prior">—</b></div>
+              </aside>
+            </div>
+          </div>
+
+          <div class="view" data-view="run" id="view-run">
+            <div class="run">
+              <div class="run-head">
+                <div class="mark md">S</div>
+                <div>
+                  <h2>SYNTRA is opening the lesson</h2>
+                  <p class="sub" id="run-sub">Labelling the topic, then checking the cache.</p>
+                </div>
+              </div>
+              <div class="run-grid">
+                <aside class="glass pipeline">
+                  <p class="kicker">Pipeline progress</p>
+                  <ol id="pipeline">
+                    <li data-step="label"><i>1</i><div><strong>Label</strong><small>Name the topic, subject, and cluster</small></div></li>
+                    <li data-step="cache"><i>2</i><div><strong>Cache</strong><small>Look up verified SYNTRA research</small></div></li>
+                    <li data-step="web"><i>3</i><div><strong>Web</strong><small>Research live when the cache is thin</small></div></li>
+                    <li data-step="profile"><i>4</i><div><strong>Learner profile</strong><small>Lock level, board, subject, and depth</small></div></li>
+                    <li data-step="prereq"><i>5</i><div><strong>Prerequisites</strong><small>Map what must already be in place</small></div></li>
+                    <li data-step="objectives"><i>6</i><div><strong>Learning objectives</strong><small>Write measurable outcomes</small></div></li>
+                    <li data-step="lesson"><i>7</i><div><strong>Lesson plan</strong><small>Order the timed teaching sequence</small></div></li>
+                    <li data-step="slides"><i>8</i><div><strong>Slides</strong><small>Turn the sequence into board-ready slides</small></div></li>
+                    <li data-step="curriculum"><i>9</i><div><strong>Curriculum</strong><small>Assemble the teachable brief</small></div></li>
+                  </ol>
+                </aside>
+                <div class="glass live">
+                  <div class="chrome"><i></i><i></i><i></i></div>
+                  <p class="kicker">Live workspace</p>
+                  <h3 id="live-title">Gathering resources</h3>
+                  <p class="live-body" id="live-body">Research, profile, prerequisites, and objectives appear here as they land.</p>
+                  <div class="bar" id="live-bar"></div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <div class="view" data-view="ready" id="view-ready">
+            <div class="ready">
+              <div class="check">✓</div>
+              <h2 class="serif">Lesson Ready!</h2>
+              <p class="sub">Your lesson is compiled and saved to Past lessons.</p>
+              <div class="glass summary">
+                <p class="kicker">Lesson summary</p>
+                <h3>Coastal landscapes</h3>
+                <p class="muted">Geography</p>
+                <div class="chips">
+                  <span class="blue">GCSE</span>
+                  <span>7 steps</span>
+                  <span>60 min</span>
+                  <span class="pill filled sm">Reused from SYNTRA cache</span>
+                </div>
+              </div>
+              <button class="cta wide" type="button">View Lesson</button>
+              <div class="ready-row">
+                <button class="ghost-btn grow" type="button">Past lessons</button>
+                <button class="ghost-btn grow" type="button">New brief</button>
+              </div>
+            </div>
+          </div>
+
+          <div class="view" data-view="teach" id="view-teach">
+            <div class="teach">
+              <div class="glass stage-card">
+                <div class="dossier-head">
+                  <p class="kicker">Lesson</p>
+                  <span class="pill filled sm">Reused from SYNTRA cache</span>
+                </div>
+                <h3>Coastal landscapes</h3>
+                <div class="board" id="board">
+                  <div class="board-top">
+                    <span>Geography · AQA · GCSE</span>
+                    <strong id="slide-count">Slide 1 / 3</strong>
+                  </div>
+                  <div class="slide on" data-slide="0">
+                    <div class="meta"><span>3 MIN</span><span>Foundation</span></div>
+                    <h4>Coasts are energy, rock, and sediment</h4>
+                    <ul>
+                      <li>A coastline is where wave energy meets geology.</li>
+                      <li>Sediment is stored (beach), moved (drift), or lost (erosion).</li>
+                      <li>Today: process first, then landforms, then management.</li>
+                    </ul>
+                  </div>
+                  <div class="slide" data-slide="1">
+                    <div class="meta"><span>4 MIN</span><span>Developing</span></div>
+                    <h4>Wave energy tracks fetch</h4>
+                    <ul>
+                      <li>Fetch is the unbroken distance wind blows over water.</li>
+                      <li>Longer fetch and stronger wind mean more energy at the shore.</li>
+                    </ul>
+                    <div class="equation">Wave energy ∝ fetch × wind speed</div>
+                  </div>
+                  <div class="slide" data-slide="2">
+                    <div class="meta"><span>5 MIN</span><span>Developing</span></div>
+                    <h4>Constructive vs destructive waves</h4>
+                    <div class="compare">
+                      <div>
+                        <strong>Constructive</strong>
+                        <p>Strong swash, weak backwash. The beach builds.</p>
+                      </div>
+                      <div>
+                        <strong>Destructive</strong>
+                        <p>Weak swash, strong backwash. The beach is stripped.</p>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+                <div class="board-nav">
+                  <span>Previous</span>
+                  <span class="next">Next →</span>
+                </div>
+              </div>
+              <aside class="glass pack">
+                <p class="kicker">Teaching pack</p>
+                <div class="pack-row on" data-pack="notes"><i>1</i><div><strong>Notes</strong><small>What to say on this slide</small></div></div>
+                <div class="pack-row" data-pack="sequence"><i>2</i><div><strong>Sequence</strong><small>Teach in this order</small></div></div>
+                <div class="pack-row" data-pack="objectives"><i>3</i><div><strong>Objectives</strong><small>What the learner should be able to do</small></div></div>
+                <div class="pack-row" data-pack="brief"><i>4</i><div><strong>Brief</strong><small>Goal, depth, and prior knowledge</small></div></div>
+                <div class="pack-body">
+                  <div class="pack-pane on" data-pane="notes">
+                    <p class="kicker">Say this</p>
+                    <p id="say-this">Hold the three photos. Do not name landforms yet. Ask which one is being attacked, which is storing sediment, which is being managed.</p>
+                  </div>
+                  <div class="pack-pane" data-pane="sequence">
+                    <p class="kicker">On the board</p>
+                    <ol class="steps">
+                      <li><b>1</b><div><strong>Activate: what is a coastline doing?</strong><small>5 min</small></div></li>
+                      <li><b>2</b><div><strong>Fetch and wave energy</strong><small>8 min</small></div></li>
+                      <li><b>3</b><div><strong>Constructive vs destructive waves</strong><small>8 min</small></div></li>
+                      <li><b>4</b><div><strong>Longshore drift on the board</strong><small>10 min</small></div></li>
+                    </ol>
+                  </div>
+                  <div class="pack-pane" data-pane="objectives">
+                    <p class="kicker">Progress</p>
+                    <p class="obj-sum">5 objectives in this lesson</p>
+                    <p class="obj"><span class="ok">✓</span> Describe how fetch and wind control wave energy</p>
+                    <p class="obj"><span class="ok">✓</span> Compare constructive and destructive waves</p>
+                    <p class="obj gap"><span>!</span> Weathering vs erosion still a gap</p>
+                  </div>
+                  <div class="pack-pane" data-pane="brief">
+                    <div class="row"><span>Goal</span><b class="filled">Prepare for an exam</b></div>
+                    <div class="row"><span>Depth</span><b class="filled">GCSE</b></div>
+                    <div class="row"><span>Prior</span><b class="filled">Waves transfer energy; beaches from photos</b></div>
+                  </div>
+                </div>
+              </aside>
+            </div>
+          </div>
+
+          <div class="view" data-view="history" id="view-history">
+            <div class="history">
+              <h2>Past lessons</h2>
+              <p class="sub">Saved on this device. Opening a lesson does not run the pipeline again.</p>
+              <article class="glass hist">
+                <div class="hist-top"><h3>Coastal landscapes</h3><span class="pill sm">Reused from SYNTRA cache</span></div>
+                <div class="chips"><span>Geography</span><span>GCSE</span><span>AQA</span><span>Today</span></div>
+                <div class="hist-foot"><em>Reopen</em><span>Run again</span></div>
+              </article>
+              <article class="glass hist">
+                <div class="hist-top"><h3>Osmosis</h3><span class="pill sm">Cache + live research</span></div>
+                <div class="chips"><span>Biology</span><span>GCSE</span><span>OCR</span><span>Yesterday</span></div>
+                <div class="hist-foot"><em>Reopen</em><span>Run again</span></div>
+              </article>
+              <article class="glass hist">
+                <div class="hist-top"><h3>Magnetism</h3><span class="pill sm">Researched live</span></div>
+                <div class="chips"><span>Physics</span><span>A-Level</span><span>AQA</span><span>Last week</span></div>
+                <div class="hist-foot"><em>Reopen</em><span>Run again</span></div>
+              </article>
+            </div>
+          </div>
+
+          <div class="view" data-view="signin" id="view-signin">
+            <div class="signin">
+              <div class="glass auth">
+                <h2>Sign in / Sign up</h2>
+                <p class="sub">Keep lessons across devices. Skip and continue as a guest — research still runs.</p>
+                <div class="field">Email</div>
+                <div class="field">Password</div>
+                <button class="cta wide" type="button">Sign in</button>
+                <button class="ghost-btn wide" type="button">Sign up</button>
+                <button class="ghost-btn wide" type="button">Continue with Google</button>
+                <p class="skip">Skip for now</p>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section class="scene scene-hold" data-scene="hold">
+      <div class="mark" aria-hidden="true">S</div>
+      <p class="wordmark">SYNTRA</p>
+      <p class="peek">Sneak peek</p>
+    </section>
+  </div>
+
+  <p class="hint" id="hint">Fullscreen recommended · Space replays · H hides this</p>
+  <script src="preview.js"></script>
+</body>
+</html>

@@ -10,13 +10,13 @@ from research_agent.schema import (
 
 
 def _package(**overrides) -> ResearchPackage:
-    data = dict(
-        topic="Ohm's law",
-        subject="physics",
-        education_level="GCSE",
-        exam_board="",
-        key_concepts=["current", "voltage", "resistance"],
-        claims=[
+    data = {
+        "topic": "Ohm's law",
+        "subject": "physics",
+        "education_level": "GCSE",
+        "exam_board": "",
+        "key_concepts": ["current", "voltage", "resistance"],
+        "claims": [
             PackageClaim(
                 claim="Ohm's law states that V = IR for an ohmic conductor.",
                 evidence="Voltage is proportional to current at constant temperature.",
@@ -33,14 +33,14 @@ def _package(**overrides) -> ResearchPackage:
                 ),
             )
         ],
-        research_method=ResearchMethod(
+        "research_method": ResearchMethod(
             rag_used=False,
             web_used=True,
             fact_check_used=True,
             freshness="STABLE",
             retrieval_mode="WEB_ONLY",
         ),
-    )
+    }
     data.update(overrides)
     return ResearchPackage.model_validate(data)
 
@@ -76,7 +76,9 @@ def test_unverified_claims_are_not_stored(tmp_path):
     )
     ok, reason = should_persist(package)
     assert ok is False
-    result = persist_research_package(package, store=KnowledgeStore(root=tmp_path, documents=[]), root=tmp_path)
+    result = persist_research_package(
+        package, store=KnowledgeStore(root=tmp_path, documents=[]), root=tmp_path
+    )
     assert result["stored"] is False
     assert "verified" in reason.lower()
 

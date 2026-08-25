@@ -4,6 +4,7 @@ from research_agent.retrieval.session import (
     remember_evidence,
     set_cache_exact,
     set_retrieval_mode,
+    user_text,
     web_blocked,
 )
 
@@ -76,3 +77,35 @@ def test_capture_strict_ignores_empty_text():
     capture_strict_from_text(state, "Strict verification: yes")
     capture_strict_from_text(state, "")
     assert state["strict_mode"] is True
+
+
+def test_user_text_reads_message_parts():
+    context = type(
+        "Ctx",
+        (),
+        {
+            "user_content": type(
+                "Content",
+                (),
+                {"parts": [{"text": "Strict verification: yes"}]},
+            )(),
+            "session": None,
+        },
+    )()
+    assert user_text(context) == "Strict verification: yes"
+    assert user_text(None) == ""
+
+
+def test_user_text_caches_on_session_state():
+    events = [
+        type(
+            "Event",
+            (),
+            {"content": {"text": "Teach magnets. Strict verification: yes"}},
+        )()
+    ]
+    session = type("Session", (), {"events": events})()
+    context = type("Ctx", (), {"state": {}, "session": session, "user_content": None})()
+    assert user_text(context) == "Teach magnets. Strict verification: yes"
+    session.events = []
+    assert user_text(context) == "Teach magnets. Strict verification: yes"

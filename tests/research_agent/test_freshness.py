@@ -3,10 +3,16 @@ from research_agent.schema import FreshnessClass
 
 
 def test_stable_classroom_topics():
-    assert classify_freshness("Teach me electromagnetic induction.") is FreshnessClass.STABLE
+    assert (
+        classify_freshness("Teach me electromagnetic induction.")
+        is FreshnessClass.STABLE
+    )
     assert classify_freshness("Explain photosynthesis.") is FreshnessClass.STABLE
     assert classify_freshness("Explain ionic bonding.") is FreshnessClass.STABLE
-    assert classify_freshness("What is electromagnetic induction?") is FreshnessClass.STABLE
+    assert (
+        classify_freshness("What is electromagnetic induction?")
+        is FreshnessClass.STABLE
+    )
     assert classify_freshness("Explain Newton's laws.") is FreshnessClass.STABLE
 
 
