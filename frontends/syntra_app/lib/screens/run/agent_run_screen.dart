@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_animate/flutter_animate.dart';
 import 'package:uuid/uuid.dart';
 
 import '../../auth/auth_service.dart';
@@ -659,6 +660,14 @@ class _StepMark extends StatelessWidget {
               size: 14,
               color: SyntraPalette.onAccent,
             )
+              .animate(key: ValueKey('step-mark-$index-$status'))
+              .scale(
+                begin: const Offset(0.45, 0.45),
+                end: const Offset(1, 1),
+                duration: 320.ms,
+                curve: Curves.easeOutBack,
+              )
+              .fadeIn(duration: 160.ms)
           : Text(
               '$index',
               style: SyntraTheme.sans(

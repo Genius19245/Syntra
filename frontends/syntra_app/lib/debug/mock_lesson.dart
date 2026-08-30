@@ -6,16 +6,23 @@ import 'package:flutter/material.dart';
 import '../data/intake_catalog.dart';
 import '../models/learner_brief.dart';
 import '../models/research_origin.dart';
+import '../history/lesson_record.dart';
 import '../progress/models.dart';
+import '../screens/result/curriculum_screen.dart';
 import '../screens/result/teach_screen.dart';
 import '../theme/syntra_theme.dart';
 
-/// Local teaching pack for Flutter widget tests and the standalone preview.
+/// Local teaching pack for Flutter widget tests, the standalone preview, and a
+/// sample Past lesson so View Lesson can open the coastal slides without a live
+/// run.
 ///
-/// The live app does not boot this pack. Open it with
+/// Open the board with
 /// `flutter run -d chrome -t lib/debug/mock_teach_main.dart`.
+/// The live studio also seeds this pack into Past lessons on first launch.
 
 const mockTopic = 'Coastal landscapes';
+
+const sampleLessonId = 'syntra.sample.coastal-landscapes';
 
 LearnerBrief mockBrief() {
   return LearnerBrief()
@@ -66,6 +73,49 @@ TeachScreen mockTeachScreen() {
   );
 }
 
+CurriculumScreen mockCurriculumScreen() {
+  final pipeline = mockPipeline();
+  return CurriculumScreen(
+    key: const ValueKey('mock-curriculum-screen'),
+    brief: mockBrief(),
+    markdown: pipeline.curriculum!,
+    origin: mockOrigin(),
+    originBadge: mockOrigin().badge,
+    fromHistory: true,
+    pipeline: pipeline,
+  );
+}
+
+Map<String, dynamic> mockTeacherPayload() {
+  final pipeline = mockPipeline();
+  return {
+    if (pipeline.learningObjectives != null)
+      'learningObjectives': pipeline.learningObjectives,
+    if (pipeline.prerequisiteAnalysis != null)
+      'prerequisiteAnalysis': pipeline.prerequisiteAnalysis,
+    if (pipeline.lessonPlan != null) 'lessonPlan': pipeline.lessonPlan,
+    if (pipeline.slides != null) 'slides': pipeline.slides,
+    if (pipeline.assessment != null) 'assessment': pipeline.assessment,
+    if (pipeline.knownKnowledge != null)
+      'knownKnowledge': pipeline.knownKnowledge,
+    if (pipeline.explanation != null) 'explanation': pipeline.explanation,
+    if (pipeline.interaction != null) 'interaction': pipeline.interaction,
+    if (pipeline.adaptation != null) 'adaptation': pipeline.adaptation,
+    if (pipeline.example != null) 'example': pipeline.example,
+  };
+}
+
+LessonRecord mockLessonRecord() {
+  final pipeline = mockPipeline();
+  return LessonRecord.fromProduction(
+    id: sampleLessonId,
+    brief: mockBrief(),
+    markdown: pipeline.curriculum!,
+    origin: mockOrigin(),
+    teacherPayload: mockTeacherPayload(),
+  );
+}
+
 Widget mockTeachApp() {
   return MaterialApp(
     title: 'SYNTRA Teaching Studio',
@@ -79,6 +129,22 @@ Widget mockTeachApp() {
       },
     ),
     home: mockTeachScreen(),
+  );
+}
+
+Widget mockCurriculumApp() {
+  return MaterialApp(
+    title: 'SYNTRA Teaching Studio',
+    debugShowCheckedModeBanner: false,
+    theme: SyntraTheme.light(),
+    scrollBehavior: const MaterialScrollBehavior().copyWith(
+      dragDevices: {
+        PointerDeviceKind.touch,
+        PointerDeviceKind.mouse,
+        PointerDeviceKind.trackpad,
+      },
+    ),
+    home: mockCurriculumScreen(),
   );
 }
 
@@ -223,7 +289,8 @@ final _lessonPlanJson = jsonEncode({
     {
       'step': 1,
       'title': 'Activate: what is a coastline doing?',
-      'purpose': 'Surface photos of cliffs and beaches as processes, not scenery.',
+      'purpose':
+          'Surface photos of cliffs and beaches as processes, not scenery.',
       'activity':
           'Show three photos (Holderness cliff, Chesil Beach, a groyned resort). Ask: energy, sediment, or both?',
       'concepts': ['coastline', 'energy', 'sediment'],
@@ -248,7 +315,12 @@ final _lessonPlanJson = jsonEncode({
       'purpose': 'Contrast swash and backwash before naming landforms.',
       'activity':
           'Two-column board: strong swash vs strong backwash. Class votes which photo matches which wave.',
-      'concepts': ['swash', 'backwash', 'constructive waves', 'destructive waves'],
+      'concepts': [
+        'swash',
+        'backwash',
+        'constructive waves',
+        'destructive waves',
+      ],
       'depends_on': ['wave energy'],
       'estimated_minutes': 8,
       'difficulty': 'developing',
@@ -338,7 +410,6 @@ final _slidesJson = jsonEncode({
       'content': [
         'Fetch is the unbroken distance wind blows over water.',
         'Longer fetch and stronger wind mean more energy at the shore.',
-        'The Atlantic fetch hitting west Cornwall is not the same as a sheltered ria.',
       ],
       'visual_type': 'equation',
       'visual_description': 'Simple GCSE relationship, not a derived formula.',
@@ -357,9 +428,8 @@ final _slidesJson = jsonEncode({
       'title': 'Constructive vs destructive waves',
       'purpose': 'Contrast swash and backwash before landforms.',
       'content': [
-        'Constructive waves: strong swash, weak backwash, beach builds.',
-        'Destructive waves: weak swash, strong backwash, beach is stripped.',
-        'Frequency is a clue: destructive waves arrive more often.',
+        'Constructive: Strong swash, weak backwash. The beach builds.',
+        'Destructive: Weak swash, strong backwash. The beach is stripped.',
       ],
       'visual_type': 'comparison',
       'visual_description':
@@ -388,6 +458,14 @@ final _slidesJson = jsonEncode({
       'visual_type': 'flowchart',
       'visual_description':
           'Zigzag arrows along a beach, then a spit growing across a river mouth.',
+      'visual_asset': {
+        'prompt':
+            'Overhead view of a sandy beach showing longshore drift and a spit.',
+        'aspect_ratio': '16:9',
+        'educational_purpose':
+            'Show zigzag transport and a spit at a river mouth',
+        'url': 'assets/slides/longshore-drift.jpg',
+      },
       'diagram_spec': {
         'diagram_type': 'flowchart',
         'subject': 'Longshore drift sequence',
@@ -418,10 +496,10 @@ final _slidesJson = jsonEncode({
         'aspect_ratio': '16:9',
         'educational_purpose':
             'Show differential erosion creating headlands and bays without needing a network image',
-        'status': 'placeholder',
+        'url': 'assets/slides/headlands-bays.jpg',
       },
       'teacher_explanation':
-          'The illustration is a placeholder — talk over it. Shade hard rock darker. Ask where a settlement would put a beach cafe.',
+          'Shade hard rock darker. Ask where a settlement would put a beach cafe.',
       'estimated_minutes': 4,
       'difficulty': 'intermediate',
     },
@@ -437,6 +515,13 @@ final _slidesJson = jsonEncode({
       'visual_type': 'diagram',
       'visual_description':
           'Side-view cliff with notch, collapse arrow, and a wide platform in front.',
+      'visual_asset': {
+        'prompt':
+            'Side-view cross-section of a cliff, notch, and wave-cut platform.',
+        'aspect_ratio': '16:9',
+        'educational_purpose': 'Show notch, collapse, retreat, and platform',
+        'url': 'assets/slides/wave-cut-platform.jpg',
+      },
       'diagram_spec': {
         'diagram_type': 'cross_section',
         'subject': 'Wave-cut platform formation',
@@ -461,6 +546,14 @@ final _slidesJson = jsonEncode({
       'visual_type': 'comparison',
       'visual_description':
           'Three panels: curved sea wall, timber groynes, piled boulders.',
+      'visual_asset': {
+        'prompt':
+            'Three coastal defences: sea wall, timber groynes, rock armour.',
+        'aspect_ratio': '16:9',
+        'educational_purpose':
+            'Name hard-engineering options before evaluating them',
+        'url': 'assets/slides/coastal-defences.jpg',
+      },
       'teacher_explanation':
           'Groynes are the trap. Ask who loses sand. The next town along. That sentence is evaluation, not description.',
       'estimated_minutes': 5,
@@ -510,25 +603,27 @@ const mockExplanation = '''
 Fetch and wave energy
 
 ## Level
-GCSE · qualitative relationship, no derived formula.
+GCSE · qualitative relationship. No derived formula.
+
+## Say this
+Fetch is the unbroken stretch of water the wind blows over. Longer fetch and stronger wind mean more energy at the coast.
 
 ## Explanation
-Fetch is the unbroken stretch of water the wind blows over. At GCSE, treat wave energy as tracking fetch and wind speed together: a long Atlantic fetch hitting west Cornwall arrives with more energy than a short fetch inside a sheltered ria.
+Wind transfers energy into the sea along that open-water path. The longer the path, the more energy the waves can carry when they arrive. That is why a long Atlantic fetch hitting west Cornwall arrives with more energy than a short fetch inside a sheltered ria.
 
-Do not start with landforms. Point at a map first. Ask why a storm on a small lake can look fierce and still fail to cut a wave-cut platform — the fetch is too short for the energy to keep arriving.
+A storm on a small lake can look fierce and still fail to cut a wave-cut platform. The wind is strong, but the fetch is too short for the energy to keep arriving.
 
-Write the relationship once, then freeze:
+## Freeze
+Wave energy ∝ fetch × wind speed
 
-**Wave energy ∝ fetch × wind speed**
-
-That sentence is the cause. Constructive and destructive waves, then longshore drift, come after it.
+## Classroom move
+Point at fetch first, then wind. Ask why a lake storm can look fierce and still fail to cut a platform. Do not name constructive waves, destructive waves, or landforms yet.
 
 ## Prior knowledge
 Students already know waves transfer energy across the sea. They have seen beaches and cliffs in photos. They have not yet named fetch, swash, or backwash.
 
-## Misconceptions
-- A tall wave is automatically a destructive wave. Height is not the test; swash versus backwash is.
-- Fetch is "how windy it is". Fetch is distance of open water, not wind speed.
+## Watch for
+- Fetch is "how windy it is". Fetch is distance of open water, not wind speed. Wind speed is a separate factor in the same relationship.
 
 ## Limits
 Keep the energy relationship qualitative. Do not derive a coastal-process formula beyond what the research pack verified.
@@ -601,9 +696,7 @@ clarify · stay_on_step
 Student asked: "Why does the spit curve?"
 
 ## Reply
-The spit grows because longshore drift dumps sediment where the coast changes direction. It curves because the current in the estuary bends the tip. Stay with that sentence. Do not open a new landform.
-
-If they are still mixing drift with erosion, send them back to the zigzag arrows: swash at an angle, backwash straight down, net movement along the beach.
+The spit grows because longshore drift dumps sediment where the coast changes direction. It curves because the current in the estuary bends the tip.
 
 ## Teaching note
 Stay on this step. Briefly recall swash and backwash. Do not defer to management, and do not invent a second named example.
@@ -616,9 +709,8 @@ Stay on this step. Briefly recall swash and backwash. Do not defer to management
 ## Other answers
 
 **Is fetch the same as how windy it is?**
-Fetch is the unbroken stretch of water the wind blows over. Wind speed is a separate thing. A fierce storm on a small lake still has a short fetch.
+No. Fetch is the unbroken stretch of water the wind blows over. Wind speed is a separate thing. A fierce storm on a small lake still has a short fetch.
 
 **Why haven't we named a spit yet?**
-Stay on the zigzag. Adaptation is holding this step until weathering versus erosion is repaired. Naming the spit comes after the transport sequence sticks.
+Because weathering versus erosion is not solid yet. Stay on the zigzag: swash at an angle, backwash straight down. The spit is named after that transport sequence sticks.
 ''';
-

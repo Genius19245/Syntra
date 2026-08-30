@@ -83,7 +83,10 @@ class _SlidePanelState extends State<SlidePanel> {
             Expanded(
               child: LayoutBuilder(
                 builder: (context, constraints) {
-                  var boardWidth = constraints.maxWidth.clamp(220.0, constraints.maxWidth);
+                  var boardWidth = constraints.maxWidth.clamp(
+                    220.0,
+                    constraints.maxWidth,
+                  );
                   var boardHeight = boardWidth * 9 / 16;
                   if (boardHeight > constraints.maxHeight) {
                     boardHeight = constraints.maxHeight;
@@ -234,25 +237,11 @@ class _Board extends StatelessWidget {
                     ),
                     const SizedBox(height: 8),
                     Expanded(
-                      child: slide.hasVisual
-                          ? Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                Expanded(
-                                  flex: 4,
-                                  child: _SlideCopy(slide: slide, color: color),
-                                ),
-                                const SizedBox(height: 10),
-                                Expanded(
-                                  flex: 6,
-                                  child: _CaptionedVisual(
-                                    slide: slide,
-                                    accent: accent,
-                                  ),
-                                ),
-                              ],
-                            )
-                          : _SlideCopy(slide: slide, color: color),
+                      child: _SlideStage(
+                        slide: slide,
+                        color: color,
+                        accent: accent,
+                      ),
                     ),
                   ],
                 ),
@@ -265,11 +254,73 @@ class _Board extends StatelessWidget {
   }
 }
 
-class _SlideCopy extends StatelessWidget {
-  const _SlideCopy({required this.slide, required this.color});
+class _SlideStage extends StatelessWidget {
+  const _SlideStage({
+    required this.slide,
+    required this.color,
+    required this.accent,
+  });
 
   final Slide slide;
   final Color color;
+  final Color accent;
+
+  @override
+  Widget build(BuildContext context) {
+    if (slide.visualType == 'equation' &&
+        (slide.equation ?? '').trim().isNotEmpty) {
+      return Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Expanded(
+            child: _SlideCopy(slide: slide, color: color),
+          ),
+          const SizedBox(height: 10),
+          _EquationVisual(equation: slide.equation!),
+        ],
+      );
+    }
+    final pairs = comparisonPairs(slide);
+    if (slide.visualType == 'comparison' && pairs.length >= 2) {
+      return Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          _SlideCopy(slide: slide, color: color, showBullets: false),
+          const SizedBox(height: 10),
+          Expanded(child: _ComparisonVisual(pairs: pairs)),
+        ],
+      );
+    }
+    if (slide.hasVisual) {
+      return Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Expanded(
+            flex: 4,
+            child: _SlideCopy(slide: slide, color: color),
+          ),
+          const SizedBox(height: 10),
+          Expanded(
+            flex: 6,
+            child: _CaptionedVisual(slide: slide, accent: accent),
+          ),
+        ],
+      );
+    }
+    return _SlideCopy(slide: slide, color: color);
+  }
+}
+
+class _SlideCopy extends StatelessWidget {
+  const _SlideCopy({
+    required this.slide,
+    required this.color,
+    this.showBullets = true,
+  });
+
+  final Slide slide;
+  final Color color;
+  final bool showBullets;
 
   @override
   Widget build(BuildContext context) {
@@ -281,10 +332,7 @@ class _SlideCopy extends StatelessWidget {
           runSpacing: 6,
           children: [
             if (slide.estimatedMinutes > 0)
-              _MetaChip(
-                label: '${slide.estimatedMinutes} MIN',
-                color: color,
-              ),
+              _MetaChip(label: '${slide.estimatedMinutes} MIN', color: color),
             _MetaChip(label: slide.difficultyLabel, color: color),
           ],
         ),
@@ -300,47 +348,49 @@ class _SlideCopy extends StatelessWidget {
             fontWeight: FontWeight.w700,
           ),
         ),
-        const SizedBox(height: 10),
-        Expanded(
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              for (final line in slide.content.take(5))
-                Flexible(
-                  child: Padding(
-                    padding: const EdgeInsets.only(bottom: 8),
-                    child: Row(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Container(
-                          width: 8,
-                          height: 8,
-                          margin: const EdgeInsets.only(top: 8, right: 10),
-                          decoration: BoxDecoration(
-                            color: color,
-                            shape: BoxShape.circle,
-                          ),
-                        ),
-                        Expanded(
-                          child: Text(
-                            line,
-                            maxLines: 3,
-                            overflow: TextOverflow.ellipsis,
-                            style: SyntraTheme.sans(
-                              color: SyntraPalette.navy,
-                              fontSize: 16,
-                              height: 1.3,
-                              fontWeight: FontWeight.w600,
+        if (showBullets && slide.content.isNotEmpty) ...[
+          const SizedBox(height: 10),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                for (final line in slide.content.take(5))
+                  Flexible(
+                    child: Padding(
+                      padding: const EdgeInsets.only(bottom: 8),
+                      child: Row(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Container(
+                            width: 8,
+                            height: 8,
+                            margin: const EdgeInsets.only(top: 8, right: 10),
+                            decoration: BoxDecoration(
+                              color: color,
+                              shape: BoxShape.circle,
                             ),
                           ),
-                        ),
-                      ],
+                          Expanded(
+                            child: Text(
+                              line,
+                              maxLines: 3,
+                              overflow: TextOverflow.ellipsis,
+                              style: SyntraTheme.sans(
+                                color: SyntraPalette.navy,
+                                fontSize: 16,
+                                height: 1.3,
+                                fontWeight: FontWeight.w600,
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
                     ),
                   ),
-                ),
-            ],
+              ],
+            ),
           ),
-        ),
+        ],
       ],
     );
   }
@@ -447,6 +497,17 @@ class _StoredImage extends StatelessWidget {
 
   Widget _imageFor(VisualAsset asset) {
     final url = asset.url!;
+    if (isSlideAssetUrl(url)) {
+      return Image.asset(
+        slideAssetPath(url),
+        fit: BoxFit.cover,
+        errorBuilder: (context, error, stackTrace) => const _QuietVisual(
+          kicker: 'SYNTRA',
+          icon: Icons.broken_image_outlined,
+          color: SyntraPalette.amber,
+        ),
+      );
+    }
     final bytes = decodeSlideImageBytes(url);
     if (bytes != null) {
       return Image.memory(
@@ -523,6 +584,65 @@ class _QuietVisual extends StatelessWidget {
   }
 }
 
+class _ComparisonVisual extends StatelessWidget {
+  const _ComparisonVisual({required this.pairs});
+
+  final List<({String title, String body})> pairs;
+
+  @override
+  Widget build(BuildContext context) {
+    return Row(
+      key: const ValueKey('slide-comparison'),
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        for (var i = 0; i < pairs.length; i++) ...[
+          if (i > 0) const SizedBox(width: 10),
+          Expanded(
+            child: DecoratedBox(
+              decoration: BoxDecoration(
+                color: SyntraPalette.voidMid,
+                borderRadius: BorderRadius.circular(12),
+              ),
+              child: Padding(
+                padding: const EdgeInsets.all(12),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      pairs[i].title,
+                      maxLines: 2,
+                      overflow: TextOverflow.ellipsis,
+                      style: SyntraTheme.sans(
+                        color: SyntraPalette.navy,
+                        fontSize: 13,
+                        fontWeight: FontWeight.w800,
+                      ),
+                    ),
+                    const SizedBox(height: 4),
+                    Expanded(
+                      child: Text(
+                        pairs[i].body,
+                        maxLines: 5,
+                        overflow: TextOverflow.ellipsis,
+                        style: SyntraTheme.sans(
+                          color: SyntraPalette.inkMuted,
+                          fontSize: 12,
+                          height: 1.35,
+                          fontWeight: FontWeight.w600,
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          ),
+        ],
+      ],
+    );
+  }
+}
+
 class _EquationVisual extends StatelessWidget {
   const _EquationVisual({required this.equation});
 
@@ -540,7 +660,7 @@ class _EquationVisual extends StatelessWidget {
       ),
       child: Center(
         child: Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 16),
+          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
           child: Text(
             equation,
             textAlign: TextAlign.center,
@@ -723,7 +843,7 @@ class _MetaChip extends StatelessWidget {
 }
 
 String? figureCaption(Slide slide) {
-  if (!slide.hasVisual) return null;
+  if (!slide.hasVisual || slide.usesInlineBoard) return null;
   final subject = slide.diagramSpec?.subject.trim() ?? '';
   final description = slide.visualDescription.trim();
   final detail = subject.isNotEmpty

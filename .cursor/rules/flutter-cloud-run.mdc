@@ -1,0 +1,31 @@
+---
+description: Always run SYNTRA Flutter against Cloud Run with firebase.defines.json
+alwaysApply: true
+---
+
+# Run SYNTRA (Flutter + Cloud Run)
+
+Default run is **Chrome + Cloud Run + Firebase Auth**. Do not use local ADK unless the user explicitly asks for local-only.
+
+```bash
+cd frontends/syntra_app
+flutter run -d chrome --dart-define-from-file=firebase.defines.json
+```
+
+Do **not** set `ADK_BASE_URL`. `AdkConfig` defaults to Cloud Run:
+`https://syntra-orchestrator-459448503831.us-central1.run.app`
+
+## Do not
+
+- `./scripts/dev.sh` (starts local ADK and `--dart-define=ADK_BASE_URL=http://127.0.0.1:8000`)
+- `flutter run --dart-define=ADK_BASE_URL=http://127.0.0.1:8000`
+- `flutter run` without `--dart-define-from-file=firebase.defines.json` (Sign in shows "Add firebase.defines.json")
+- Treat **Skip for now** / guest as the default when the user wants to sign in
+
+## Firebase defines
+
+Use local `frontends/syntra_app/firebase.defines.json` (gitignored). Do not commit it. Do not invent dummy API keys.
+
+If the file is missing: look at `frontends/syntra_app/firebase.defines.example.json` and `frontends/syntra_app/README.md`; fill real values from the Firebase console or FlutterFire output on this machine. Do not fabricate credentials.
+
+Agent deploys stay in `.cursor/rules/cloud-run-deploy.mdc` (`./scripts/deploy_cloud_run.sh`).

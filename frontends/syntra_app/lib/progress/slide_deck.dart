@@ -39,6 +39,30 @@ class VisualAsset {
   final String? url;
 
   bool get ready => url != null && url!.trim().isNotEmpty;
+
+  bool get isFlutterAsset => isSlideAssetUrl(url);
+}
+
+bool isSlideAssetUrl(String? url) {
+  final value = url?.trim() ?? '';
+  return value.startsWith('assets/') || value.startsWith('asset:');
+}
+
+String slideAssetPath(String url) {
+  return url.trim().replaceFirst(RegExp(r'^asset:'), '');
+}
+
+List<({String title, String body})> comparisonPairs(Slide slide) {
+  final pairs = <({String title, String body})>[];
+  for (final line in slide.content) {
+    final colon = line.indexOf(':');
+    if (colon <= 0) continue;
+    final title = line.substring(0, colon).trim();
+    final body = line.substring(colon + 1).trim();
+    if (title.isEmpty || body.isEmpty) continue;
+    pairs.add((title: title, body: body));
+  }
+  return pairs.take(2).toList(growable: false);
 }
 
 class DiagramSpec {
@@ -89,6 +113,11 @@ class Slide {
   bool get hasVisual =>
       visualType != 'none' || visualAsset != null || diagramSpec != null;
 
+  /// Equation and comparison stay on the board with the copy, matching the
+  /// classroom slides — not a separate figure panel.
+  bool get usesInlineBoard =>
+      visualType == 'equation' || visualType == 'comparison';
+
   String get difficultyLabel {
     switch (difficulty) {
       case 'exam_application':
@@ -136,10 +165,8 @@ class SlideDeck {
 
   bool get isEmpty => slides.isEmpty;
 
-  int get totalMinutes => slides.fold<int>(
-        0,
-        (sum, slide) => sum + slide.estimatedMinutes,
-      );
+  int get totalMinutes =>
+      slides.fold<int>(0, (sum, slide) => sum + slide.estimatedMinutes);
 
   static SlideDeck? tryParse(String? raw) {
     if (raw == null || raw.trim().isEmpty) return null;
@@ -159,7 +186,8 @@ class SlideDeck {
       if (title == null) continue;
       slides.add(
         Slide(
-          number: _int(
+          number:
+              _int(
                 pickJsonField(data, const [
                   'slide_number',
                   'slideNumber',
@@ -174,13 +202,10 @@ class SlideDeck {
             pickJsonField(data, const ['content', 'bullets', 'points']),
           ),
           visualType: _visual(
-            pickJsonField(data, const [
-              'visual_type',
-              'visualType',
-              'kind',
-            ]),
+            pickJsonField(data, const ['visual_type', 'visualType', 'kind']),
           ),
-          visualDescription: _string(
+          visualDescription:
+              _string(
                 pickJsonField(data, const [
                   'visual_description',
                   'visualDescription',
@@ -188,7 +213,8 @@ class SlideDeck {
               ) ??
               '',
           equation: _equation(data['equation']),
-          teacherExplanation: _string(
+          teacherExplanation:
+              _string(
                 pickJsonField(data, const [
                   'teacher_explanation',
                   'teacherExplanation',
@@ -198,7 +224,8 @@ class SlideDeck {
               ) ??
               '',
           interaction: _string(data['interaction']),
-          estimatedMinutes: _int(
+          estimatedMinutes:
+              _int(
                 pickJsonField(data, const [
                   'estimated_minutes',
                   'estimatedMinutes',
@@ -217,10 +244,7 @@ class SlideDeck {
             ]),
           ),
           diagramSpec: _diagramSpec(
-            pickJsonField(data, const [
-              'diagram_spec',
-              'diagramSpec',
-            ]),
+            pickJsonField(data, const ['diagram_spec', 'diagramSpec']),
           ),
         ),
       );
@@ -229,11 +253,7 @@ class SlideDeck {
     return SlideDeck(
       slides: List.unmodifiable(slides),
       lessonTitle: _string(
-        pickJsonField(root, const [
-          'lesson_title',
-          'lessonTitle',
-          'title',
-        ]),
+        pickJsonField(root, const ['lesson_title', 'lessonTitle', 'title']),
       ),
     );
   }
@@ -273,9 +293,7 @@ class SlideDeck {
 
   static String _visual(Object? value) {
     final label = _string(value)?.toLowerCase().replaceAll(' ', '_');
-    if (label == 'image' ||
-        label == 'ai_image' ||
-        label == 'ai_generated') {
+    if (label == 'image' || label == 'ai_image' || label == 'ai_generated') {
       return 'ai_generated';
     }
     if (label != null && _allowedVisual.contains(label)) return label;
@@ -294,9 +312,8 @@ class SlideDeck {
     if (value is! Map) return null;
     final data = Map<String, dynamic>.from(value);
     final prompt = _string(data['prompt']) ?? '';
-    final purpose = _string(
-          data['educational_purpose'] ?? data['educationalPurpose'],
-        ) ??
+    final purpose =
+        _string(data['educational_purpose'] ?? data['educationalPurpose']) ??
         '';
     final url = _string(data['url']);
     if (prompt.isEmpty && purpose.isEmpty && url == null) return null;
@@ -315,7 +332,8 @@ class SlideDeck {
     if (value is! Map) return null;
     final data = Map<String, dynamic>.from(value);
     final description = _string(data['description']) ?? '';
-    final diagramType = _string(data['diagram_type'] ?? data['diagramType']) ?? '';
+    final diagramType =
+        _string(data['diagram_type'] ?? data['diagramType']) ?? '';
     if (description.isEmpty && diagramType.isEmpty) return null;
     return DiagramSpec(
       diagramType: diagramType,

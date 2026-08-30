@@ -8,6 +8,7 @@ import '../../progress/models.dart';
 import '../../progress/parser.dart';
 import '../../progress/progress_panel.dart';
 import '../../progress/slide_deck.dart';
+import '../../progress/slide_export.dart';
 import '../../progress/slide_panel.dart';
 import '../../theme/syntra_palette.dart';
 import '../../theme/syntra_theme.dart';
@@ -43,12 +44,12 @@ class CurriculumScreen extends StatelessWidget {
   Widget build(BuildContext context) {
     const accent = SyntraPalette.rust;
     final wide = MediaQuery.sizeOf(context).width >= 980;
-    final badgeLabel = originBadge ??
-        (origin != null && origin!.known ? origin!.badge : null);
+    final badgeLabel =
+        originBadge ?? (origin != null && origin!.known ? origin!.badge : null);
     final progress = ProgressParser.parse(
       PipelineTexts(
-        learningObjectives: pipeline?.learningObjectives ??
-            pipeline?.researchPackage,
+        learningObjectives:
+            pipeline?.learningObjectives ?? pipeline?.researchPackage,
         prerequisiteAnalysis: pipeline?.prerequisiteAnalysis,
         curriculum: pipeline?.curriculum ?? markdown,
         assessment: pipeline?.assessment,
@@ -84,55 +85,99 @@ class CurriculumScreen extends StatelessWidget {
                       if (fromHistory) {
                         Navigator.of(context).pop();
                       } else {
-                        Navigator.of(context).popUntil(
-                          (route) => route.isFirst,
-                        );
+                        Navigator.of(
+                          context,
+                        ).popUntil((route) => route.isFirst);
                       }
                     },
                   ),
-                  trailing: TextButton.icon(
-                    onPressed: () {
-                      if (!fromHistory) {
-                        brief.setRefreshCache(true);
-                      }
-                      Navigator.of(context).pushReplacement(
-                        PageRouteBuilder(
-                          pageBuilder:
-                              (context, animation, secondaryAnimation) =>
-                                  AgentRunScreen(
-                            brief: brief,
-                            fromHistory: fromHistory,
-                          ),
-                          transitionsBuilder: (
-                            context,
-                            animation,
-                            secondaryAnimation,
-                            child,
-                          ) {
-                            return FadeTransition(
-                              opacity: animation,
-                              child: child,
-                            );
+                  trailing: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      if (slides != null && !slides.isEmpty)
+                        TextButton.icon(
+                          key: const ValueKey('download-slides'),
+                          onPressed: () async {
+                            try {
+                              await downloadSlideDeck(
+                                deck: slides,
+                                topic: brief.topic,
+                                subject: brief.resolvedSubject,
+                                board: brief.resolvedBoard,
+                                level: brief.levelId,
+                              );
+                            } catch (_) {
+                              if (!context.mounted) return;
+                              ScaffoldMessenger.of(context).showSnackBar(
+                                const SnackBar(
+                                  content: Text('Could not download slides.'),
+                                ),
+                              );
+                            }
                           },
+                          icon: const Icon(Icons.download_rounded, size: 18),
+                          label: Text(
+                            'Download slides',
+                            style: SyntraTheme.sans(
+                              color: SyntraPalette.inkMuted,
+                              fontWeight: FontWeight.w700,
+                              fontSize: 13,
+                            ),
+                          ),
+                          style: TextButton.styleFrom(
+                            foregroundColor: SyntraPalette.inkMuted,
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 10,
+                              vertical: 10,
+                            ),
+                          ),
                         ),
-                      );
-                    },
-                    icon: const Icon(Icons.refresh_rounded, size: 18),
-                    label: Text(
-                      fromHistory ? 'Run again' : 'Refresh this topic',
-                      style: SyntraTheme.sans(
-                        color: SyntraPalette.inkMuted,
-                        fontWeight: FontWeight.w700,
-                        fontSize: 13,
+                      TextButton.icon(
+                        onPressed: () {
+                          if (!fromHistory) {
+                            brief.setRefreshCache(true);
+                          }
+                          Navigator.of(context).pushReplacement(
+                            PageRouteBuilder(
+                              pageBuilder:
+                                  (context, animation, secondaryAnimation) =>
+                                      AgentRunScreen(
+                                        brief: brief,
+                                        fromHistory: fromHistory,
+                                      ),
+                              transitionsBuilder:
+                                  (
+                                    context,
+                                    animation,
+                                    secondaryAnimation,
+                                    child,
+                                  ) {
+                                    return FadeTransition(
+                                      opacity: animation,
+                                      child: child,
+                                    );
+                                  },
+                            ),
+                          );
+                        },
+                        icon: const Icon(Icons.refresh_rounded, size: 18),
+                        label: Text(
+                          fromHistory ? 'Run again' : 'Refresh this topic',
+                          style: SyntraTheme.sans(
+                            color: SyntraPalette.inkMuted,
+                            fontWeight: FontWeight.w700,
+                            fontSize: 13,
+                          ),
+                        ),
+                        style: TextButton.styleFrom(
+                          foregroundColor: SyntraPalette.inkMuted,
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 10,
+                            vertical: 10,
+                          ),
+                        ),
                       ),
-                    ),
-                    style: TextButton.styleFrom(
-                      foregroundColor: SyntraPalette.inkMuted,
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: 10,
-                        vertical: 10,
-                      ),
-                    ),
+                    ],
                   ),
                 ),
                 const SizedBox(height: 8),
@@ -459,9 +504,9 @@ class _PresenterCard extends StatelessWidget {
             children: [
               Text(
                 showTeach ? 'STUDIO' : 'LESSON',
-                style: Theme.of(context).textTheme.labelSmall?.copyWith(
-                      color: accent,
-                    ),
+                style: Theme.of(
+                  context,
+                ).textTheme.labelSmall?.copyWith(color: accent),
               ),
               const Spacer(),
               if (badgeLabel != null)
@@ -601,9 +646,9 @@ class _TeachingPackRail extends StatelessWidget {
         children: [
           Text(
             'TEACHING PACK',
-            style: Theme.of(context).textTheme.labelSmall?.copyWith(
-                  color: accent,
-                ),
+            style: Theme.of(
+              context,
+            ).textTheme.labelSmall?.copyWith(color: accent),
           ),
           const SizedBox(height: 14),
           for (var i = 0; i < items.length; i++)
@@ -776,9 +821,9 @@ class _SequenceOnBoardCue extends StatelessWidget {
       children: [
         Text(
           'ON THE BOARD',
-          style: Theme.of(context).textTheme.labelSmall?.copyWith(
-                color: accent,
-              ),
+          style: Theme.of(
+            context,
+          ).textTheme.labelSmall?.copyWith(color: accent),
         ),
         const SizedBox(height: 12),
         Text(
@@ -808,9 +853,9 @@ class _NotesPane extends StatelessWidget {
       children: [
         Text(
           'SAY THIS',
-          style: Theme.of(context).textTheme.labelSmall?.copyWith(
-                color: accent,
-              ),
+          style: Theme.of(
+            context,
+          ).textTheme.labelSmall?.copyWith(color: accent),
         ),
         const SizedBox(height: 12),
         Text(
@@ -830,10 +875,7 @@ class _NotesPane extends StatelessWidget {
 }
 
 class _TeachOnBoardCue extends StatelessWidget {
-  const _TeachOnBoardCue({
-    required this.accent,
-    required this.onOpenStudio,
-  });
+  const _TeachOnBoardCue({required this.accent, required this.onOpenStudio});
 
   final Color accent;
   final VoidCallback onOpenStudio;
@@ -845,9 +887,9 @@ class _TeachOnBoardCue extends StatelessWidget {
       children: [
         Text(
           'ON THE BOARD',
-          style: Theme.of(context).textTheme.labelSmall?.copyWith(
-                color: accent,
-              ),
+          style: Theme.of(
+            context,
+          ).textTheme.labelSmall?.copyWith(color: accent),
         ),
         const SizedBox(height: 12),
         Text(
@@ -870,7 +912,10 @@ class _TeachOnBoardCue extends StatelessWidget {
               onTap: onOpenStudio,
               borderRadius: BorderRadius.circular(12),
               child: Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 12,
+                  vertical: 10,
+                ),
                 child: Text(
                   'Open studio',
                   textAlign: TextAlign.center,

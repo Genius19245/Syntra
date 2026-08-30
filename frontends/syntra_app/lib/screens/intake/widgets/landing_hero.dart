@@ -16,10 +16,12 @@ class LandingHero extends StatelessWidget {
     super.key,
     required this.onCreate,
     required this.onOpenHistory,
+    this.onOpenSample,
   });
 
   final VoidCallback onCreate;
   final VoidCallback onOpenHistory;
+  final VoidCallback? onOpenSample;
 
   @override
   Widget build(BuildContext context) {
@@ -58,17 +60,17 @@ class LandingHero extends StatelessWidget {
                           ),
                         ),
                         const SizedBox(width: 36),
-                        const Expanded(flex: 5, child: _PreviewPanel()),
+                        Expanded(
+                          flex: 5,
+                          child: _PreviewPanel(onOpen: onOpenSample),
+                        ),
                       ],
                     )
                   : ListView(
                       children: [
-                        _Copy(
-                          onCreate: onCreate,
-                          onOpenHistory: onOpenHistory,
-                        ),
+                        _Copy(onCreate: onCreate, onOpenHistory: onOpenHistory),
                         const SizedBox(height: 32),
-                        const _PreviewPanel(),
+                        _PreviewPanel(onOpen: onOpenSample),
                       ],
                     ),
             ),
@@ -80,10 +82,7 @@ class LandingHero extends StatelessWidget {
 }
 
 class _Copy extends StatelessWidget {
-  const _Copy({
-    required this.onCreate,
-    required this.onOpenHistory,
-  });
+  const _Copy({required this.onCreate, required this.onOpenHistory});
 
   final VoidCallback onCreate;
   final VoidCallback onOpenHistory;
@@ -96,74 +95,74 @@ class _Copy extends StatelessWidget {
         mainAxisSize: MainAxisSize.min,
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-            Container(
-              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-              decoration: BoxDecoration(
-                color: SyntraPalette.rust.withValues(alpha: 0.1),
-                borderRadius: BorderRadius.circular(999),
-              ),
-              child: Text(
-                'FOR TEACHERS  ·  EVERY SUBJECT',
-                style: SyntraTheme.sans(
-                  color: SyntraPalette.rust,
-                  fontSize: 11,
-                  fontWeight: FontWeight.w800,
-                  letterSpacing: 1.4,
-                ),
-              ),
-            ).animate().fadeIn().slideY(begin: 0.2),
-            const SizedBox(height: 22),
-            Text(
-              'Plan the lesson\nyou need tomorrow.',
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+            decoration: BoxDecoration(
+              color: SyntraPalette.rust.withValues(alpha: 0.1),
+              borderRadius: BorderRadius.circular(999),
+            ),
+            child: Text(
+              'FOR TEACHERS  ·  EVERY SUBJECT',
               style: SyntraTheme.sans(
-                color: SyntraPalette.navy,
-                fontSize: MediaQuery.sizeOf(context).width >= 880 ? 64 : 42,
+                color: SyntraPalette.rust,
+                fontSize: 11,
                 fontWeight: FontWeight.w800,
-                height: 0.98,
-                letterSpacing: -2.2,
+                letterSpacing: 1.4,
               ),
-            ).animate().fadeIn(delay: 80.ms).slideY(begin: 0.08),
-            const SizedBox(height: 18),
-            Text(
-              'SYNTRA researches the topic, checks the facts, and writes a curriculum a teacher can actually teach — at the right level, for the right board.',
-              style: SyntraTheme.sans(
-                color: SyntraPalette.inkMuted,
-                fontSize: 18,
-                height: 1.5,
-                fontWeight: FontWeight.w500,
+            ),
+          ).animate().fadeIn().slideY(begin: 0.2),
+          const SizedBox(height: 22),
+          Text(
+            'Plan the lesson\nyou need tomorrow.',
+            style: SyntraTheme.sans(
+              color: SyntraPalette.navy,
+              fontSize: MediaQuery.sizeOf(context).width >= 880 ? 64 : 42,
+              fontWeight: FontWeight.w800,
+              height: 0.98,
+              letterSpacing: -2.2,
+            ),
+          ).animate().fadeIn(delay: 80.ms).slideY(begin: 0.08),
+          const SizedBox(height: 18),
+          Text(
+            'SYNTRA researches the topic, checks the facts, and writes a curriculum a teacher can actually teach — at the right level, for the right board.',
+            style: SyntraTheme.sans(
+              color: SyntraPalette.inkMuted,
+              fontSize: 18,
+              height: 1.5,
+              fontWeight: FontWeight.w500,
+            ),
+          ).animate().fadeIn(delay: 140.ms),
+          const SizedBox(height: 32),
+          Wrap(
+            spacing: 12,
+            runSpacing: 12,
+            children: [
+              SyntraButton(
+                label: 'Create New Lesson',
+                icon: Icons.add,
+                onPressed: onCreate,
               ),
-            ).animate().fadeIn(delay: 140.ms),
-            const SizedBox(height: 32),
-            Wrap(
-              spacing: 12,
-              runSpacing: 12,
-              children: [
-                SyntraButton(
-                  label: 'Create New Lesson',
-                  icon: Icons.add,
-                  onPressed: onCreate,
-                ),
-                SyntraButton(
-                  label: 'Past lessons',
-                  icon: Icons.history_rounded,
-                  filled: false,
-                  onPressed: onOpenHistory,
-                ),
-              ],
-            ).animate().fadeIn(delay: 200.ms).slideY(begin: 0.12),
-            const _OptionalSignInHint(),
-            const SizedBox(height: 28),
-            Wrap(
-              spacing: 18,
-              runSpacing: 10,
-              children: const [
-                _TrustMark(label: 'Research'),
-                _TrustMark(label: 'Fact-check'),
-                _TrustMark(label: 'Curriculum'),
-              ],
-            ).animate().fadeIn(delay: 260.ms),
-          ],
-        ),
+              SyntraButton(
+                label: 'Past lessons',
+                icon: Icons.history_rounded,
+                filled: false,
+                onPressed: onOpenHistory,
+              ),
+            ],
+          ).animate().fadeIn(delay: 200.ms).slideY(begin: 0.12),
+          const _OptionalSignInHint(),
+          const SizedBox(height: 28),
+          Wrap(
+            spacing: 18,
+            runSpacing: 10,
+            children: const [
+              _TrustMark(label: 'Research'),
+              _TrustMark(label: 'Fact-check'),
+              _TrustMark(label: 'Curriculum'),
+            ],
+          ).animate().fadeIn(delay: 260.ms),
+        ],
+      ),
     );
   }
 }
@@ -245,111 +244,124 @@ class _TrustMark extends StatelessWidget {
 }
 
 class _PreviewPanel extends StatelessWidget {
-  const _PreviewPanel();
+  const _PreviewPanel({this.onOpen});
+
+  final VoidCallback? onOpen;
 
   @override
   Widget build(BuildContext context) {
     return Center(
       child: ConstrainedBox(
         constraints: const BoxConstraints(maxWidth: 420),
-        child: Container(
-          padding: const EdgeInsets.all(22),
-          decoration: BoxDecoration(
-            color: SyntraPalette.paper,
+        child: Material(
+          color: Colors.transparent,
+          child: InkWell(
+            key: const ValueKey('landing-sample-lesson'),
+            onTap: onOpen,
             borderRadius: BorderRadius.circular(28),
-            border: Border.all(color: SyntraPalette.stroke),
-            boxShadow: [
-              BoxShadow(
-                color: SyntraPalette.navy.withValues(alpha: 0.08),
-                blurRadius: 40,
-                offset: const Offset(0, 18),
+            child: Container(
+              padding: const EdgeInsets.all(22),
+              decoration: BoxDecoration(
+                color: SyntraPalette.paper,
+                borderRadius: BorderRadius.circular(28),
+                border: Border.all(color: SyntraPalette.stroke),
+                boxShadow: [
+                  BoxShadow(
+                    color: SyntraPalette.navy.withValues(alpha: 0.08),
+                    blurRadius: 40,
+                    offset: const Offset(0, 18),
+                  ),
+                ],
               ),
-            ],
-          ),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Row(
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  const SyntraMark(size: 36),
-                  const SizedBox(width: 12),
+                  Row(
+                    children: [
+                      const SyntraMark(size: 36),
+                      const SizedBox(width: 12),
+                      Text(
+                        'Lesson brief',
+                        style: SyntraTheme.sans(
+                          color: SyntraPalette.navy,
+                          fontWeight: FontWeight.w800,
+                          fontSize: 16,
+                        ),
+                      ),
+                      const Spacer(),
+                      Container(
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 10,
+                          vertical: 5,
+                        ),
+                        decoration: BoxDecoration(
+                          color: SyntraPalette.rust,
+                          borderRadius: BorderRadius.circular(999),
+                        ),
+                        child: Text(
+                          'READY',
+                          style: SyntraTheme.sans(
+                            color: SyntraPalette.onAccent,
+                            fontSize: 10,
+                            fontWeight: FontWeight.w800,
+                            letterSpacing: 1.0,
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 20),
                   Text(
-                    'Lesson brief',
+                    'Coastal landscapes',
                     style: SyntraTheme.sans(
                       color: SyntraPalette.navy,
+                      fontSize: 26,
                       fontWeight: FontWeight.w800,
-                      fontSize: 16,
+                      height: 1.15,
                     ),
                   ),
-                  const Spacer(),
-                  Container(
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 10,
-                      vertical: 5,
+                  const SizedBox(height: 8),
+                  Text(
+                    'A GCSE Geography unit a teacher can walk into on Monday.',
+                    style: SyntraTheme.sans(
+                      color: SyntraPalette.inkMuted,
+                      fontSize: 14,
+                      height: 1.45,
                     ),
-                    decoration: BoxDecoration(
-                      color: SyntraPalette.rust,
-                      borderRadius: BorderRadius.circular(999),
-                    ),
-                    child: Text(
-                      'READY',
-                      style: SyntraTheme.sans(
-                        color: SyntraPalette.onAccent,
-                        fontSize: 10,
-                        fontWeight: FontWeight.w800,
-                        letterSpacing: 1.0,
-                      ),
-                    ),
+                  ),
+                  const SizedBox(height: 16),
+                  Wrap(
+                    spacing: 8,
+                    runSpacing: 8,
+                    children: const [
+                      _PreviewChip(label: 'Geography'),
+                      _PreviewChip(label: 'GCSE'),
+                      _PreviewChip(label: 'AQA'),
+                    ],
+                  ),
+                  const SizedBox(height: 22),
+                  _PreviewRow(
+                    title: 'Research',
+                    detail: 'Sources ranked and checked',
+                    done: true,
+                    delay: 120.ms,
+                  ),
+                  _PreviewRow(
+                    title: 'Prerequisites',
+                    detail: 'What the class must already know',
+                    done: true,
+                    delay: 280.ms,
+                  ),
+                  _PreviewRow(
+                    title: 'Curriculum',
+                    detail: 'Sequenced lessons, ready to teach',
+                    done: false,
+                    delay: 440.ms,
                   ),
                 ],
               ),
-              const SizedBox(height: 20),
-              Text(
-                'Physical Landscapes',
-                style: SyntraTheme.sans(
-                  color: SyntraPalette.navy,
-                  fontSize: 26,
-                  fontWeight: FontWeight.w800,
-                  height: 1.15,
-                ),
-              ),
-              const SizedBox(height: 8),
-              Text(
-                'A GCSE Geography unit a teacher can walk into on Monday.',
-                style: SyntraTheme.sans(
-                  color: SyntraPalette.inkMuted,
-                  fontSize: 14,
-                  height: 1.45,
-                ),
-              ),
-              const SizedBox(height: 16),
-              Wrap(
-                spacing: 8,
-                runSpacing: 8,
-                children: const [
-                  _PreviewChip(label: 'Geography'),
-                  _PreviewChip(label: 'GCSE'),
-                  _PreviewChip(label: 'AQA'),
-                ],
-              ),
-              const SizedBox(height: 22),
-              _PreviewRow(
-                title: 'Research',
-                detail: 'Sources ranked and checked',
-                done: true,
-              ),
-              _PreviewRow(
-                title: 'Prerequisites',
-                detail: 'What the class must already know',
-                done: true,
-              ),
-              _PreviewRow(
-                title: 'Curriculum',
-                detail: 'Sequenced lessons, ready to teach',
-                done: false,
-              ),
-            ],
+            ),
           ),
         ),
       ),
@@ -387,11 +399,13 @@ class _PreviewRow extends StatelessWidget {
     required this.title,
     required this.detail,
     required this.done,
+    this.delay = Duration.zero,
   });
 
   final String title;
   final String detail;
   final bool done;
+  final Duration delay;
 
   @override
   Widget build(BuildContext context) {
@@ -399,20 +413,7 @@ class _PreviewRow extends StatelessWidget {
       padding: const EdgeInsets.only(bottom: 14),
       child: Row(
         children: [
-          Container(
-            width: 22,
-            height: 22,
-            decoration: BoxDecoration(
-              shape: BoxShape.circle,
-              color: done ? SyntraPalette.rust : Colors.transparent,
-              border: Border.all(
-                color: done ? SyntraPalette.rust : SyntraPalette.strokeStrong,
-              ),
-            ),
-            child: done
-                ? const Icon(Icons.check, size: 13, color: SyntraPalette.onAccent)
-                : null,
-          ),
+          _Tick(done: done, delay: delay),
           const SizedBox(width: 12),
           Expanded(
             child: Column(
@@ -439,5 +440,64 @@ class _PreviewRow extends StatelessWidget {
         ],
       ),
     );
+  }
+}
+
+class _Tick extends StatelessWidget {
+  const _Tick({required this.done, required this.delay});
+
+  final bool done;
+  final Duration delay;
+
+  @override
+  Widget build(BuildContext context) {
+    final mark = Container(
+      width: 22,
+      height: 22,
+      decoration: BoxDecoration(
+        shape: BoxShape.circle,
+        color: done ? SyntraPalette.rust : Colors.transparent,
+        border: Border.all(
+          color: done ? SyntraPalette.rust : SyntraPalette.strokeStrong,
+        ),
+      ),
+      child: done
+          ? const Icon(
+              Icons.check,
+              size: 13,
+              color: SyntraPalette.onAccent,
+            )
+              .animate(delay: delay)
+              .scale(
+                begin: const Offset(0.4, 0.4),
+                end: const Offset(1, 1),
+                duration: 320.ms,
+                curve: Curves.easeOutBack,
+              )
+              .fadeIn(duration: 160.ms)
+          : null,
+    );
+
+    if (!done) {
+      return mark
+          .animate(delay: delay)
+          .fadeIn(duration: 280.ms)
+          .scale(
+            begin: const Offset(0.92, 0.92),
+            end: const Offset(1, 1),
+            duration: 280.ms,
+            curve: Curves.easeOutCubic,
+          );
+    }
+
+    return mark
+        .animate(delay: delay)
+        .scale(
+          begin: const Offset(0.82, 0.82),
+          end: const Offset(1, 1),
+          duration: 340.ms,
+          curve: Curves.easeOutBack,
+        )
+        .fadeIn(duration: 180.ms);
   }
 }

@@ -121,6 +121,21 @@ void main() {
     expect(prefs.getString(LessonStore.prefsKey), isNull);
   });
 
+  test('ensureSample writes a pack once and leaves it in place', () async {
+    SharedPreferences.setMockInitialValues({});
+    final prefs = await SharedPreferences.getInstance();
+    final store = LessonStore(preferences: prefs);
+    const id = 'syntra.sample.coastal-landscapes';
+
+    await store.ensureSample(sample(id: id));
+    await store.ensureSample(sample(id: id).copyWithTopic('Should not replace'));
+
+    final loaded = await store.loadAll();
+    expect(loaded, hasLength(1));
+    expect(loaded.single.id, id);
+    expect(loaded.single.topic, 'Electricity');
+  });
+
   test('namespaces keep teacher history apart on device', () async {
     SharedPreferences.setMockInitialValues({});
     final prefs = await SharedPreferences.getInstance();

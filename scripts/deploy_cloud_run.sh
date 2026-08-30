@@ -67,4 +67,5 @@ gcloud run deploy syntra-orchestrator \
     --timeout=3600 \
     --memory=2Gi \
     --cpu=2 \
-    --allow-unauthenticated
+    --allow-unauthenticated \
+    --update-env-vars SYNTRA_GENERATE_IMAGES=true

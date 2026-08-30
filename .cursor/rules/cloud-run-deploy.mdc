@@ -7,4 +7,4 @@ alwaysApply: true
 
 After changing ADK agents (`backend/curriculum_agent/`, `backend/research_agent/`, `backend/learning_objectives_agent/`, `backend/syntra_orchestrator/`), deploy with `./scripts/deploy_cloud_run.sh`. Do not treat local `adk run` or `./scripts/dev.sh` as the live update unless the user asks for local-only.
 
-Flutter `flutter run -d chrome` without `ADK_BASE_URL` uses the Cloud Run orchestrator. A deploy is required before those agents appear in the studio.
+Flutter run (Cloud Run + Auth) is in `.cursor/rules/flutter-cloud-run.mdc`. A deploy is required before those agents appear in the studio.

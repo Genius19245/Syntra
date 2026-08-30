@@ -149,10 +149,10 @@ or slide tools may attach a url on visual_asset.
 TOOLS:
 
 Tools are optional normalisers. They do not search the web.
-If any slide uses visual_type "ai_generated", call
+If any slide uses visual_type "ai_generated", you MUST call
 prepare_slide_visuals once so a url can be attached when
-generation is available. Skip tools when the JSON already
-matches the schema and no ai_generated slides need a url.
+generation is available. Do not skip the tool because the JSON
+already looks valid — a url is attached only by the tool.
 
 If you use a tool, call prepare_slide_visuals ONCE with the FULL
 slides list. It normalises visuals and validates structure.

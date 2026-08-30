@@ -1,8 +1,11 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 
+import '../../auth/auth_service.dart';
 import '../../auth/widgets/sign_in_bar.dart';
 import '../../data/intake_catalog.dart';
+import '../../debug/mock_lesson.dart';
+import '../../history/lesson_store.dart';
 import '../../history/past_lessons_link.dart';
 import '../../models/learner_brief.dart';
 import '../../theme/syntra_palette.dart';
@@ -12,6 +15,7 @@ import '../../widgets/mesh_background.dart';
 import '../../widgets/syntra_button.dart';
 import '../../widgets/syntra_shell.dart';
 import '../history/history_screen.dart';
+import '../result/curriculum_screen.dart';
 import '../run/agent_run_screen.dart';
 import 'widgets/intake_controls.dart';
 import 'widgets/landing_hero.dart';
@@ -87,6 +91,30 @@ class _IntakeStudioScreenState extends State<IntakeStudioScreen> {
     );
   }
 
+  void _openSample() {
+    final namespace =
+        AuthScope.maybeOf(context)?.historyNamespace ??
+        AuthService.guestNamespace;
+    LessonStore.instance.ensureSample(mockLessonRecord(), namespace: namespace);
+    final pipeline = mockPipeline();
+    Navigator.of(context).push(
+      PageRouteBuilder(
+        pageBuilder: (context, animation, secondaryAnimation) =>
+            CurriculumScreen(
+              brief: mockBrief(),
+              markdown: pipeline.curriculum!,
+              origin: mockOrigin(),
+              originBadge: mockOrigin().badge,
+              fromHistory: true,
+              pipeline: pipeline,
+            ),
+        transitionsBuilder: (context, animation, secondaryAnimation, child) {
+          return FadeTransition(opacity: animation, child: child);
+        },
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -108,6 +136,7 @@ class _IntakeStudioScreenState extends State<IntakeStudioScreen> {
       key: const ValueKey('landing'),
       onCreate: () => setState(() => _composing = true),
       onOpenHistory: _openHistory,
+      onOpenSample: _openSample,
     );
   }
 
@@ -143,8 +172,9 @@ class _IntakeStudioScreenState extends State<IntakeStudioScreen> {
                   const SignInBar(),
                   const SizedBox(width: 8),
                   SyntraButton(
-                    label:
-                        _brief.isLaunchReady ? 'Write lesson' : 'Fill the brief',
+                    label: _brief.isLaunchReady
+                        ? 'Write lesson'
+                        : 'Fill the brief',
                     enabled: _brief.isLaunchReady,
                     onPressed: _launch,
                   ),
@@ -279,7 +309,8 @@ class _BriefingCanvas extends StatelessWidget {
                           const SectionHeader(
                             kicker: 'Board',
                             title: 'Exam board',
-                            subtitle: 'Only if this level is assessed. Never assumed.',
+                            subtitle:
+                                'Only if this level is assessed. Never assumed.',
                           ),
                           const SizedBox(height: 14),
                           SyntraChips(

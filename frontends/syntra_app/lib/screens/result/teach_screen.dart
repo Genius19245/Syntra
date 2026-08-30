@@ -187,6 +187,7 @@ class _TeachStudioBodyState extends State<TeachStudioBody> {
   bool _adaptationOpen = false;
   late final TextEditingController _askController;
   InteractionTurn? _activeTurn;
+  int _askNonce = 0;
 
   @override
   void initState() {
@@ -209,26 +210,17 @@ class _TeachStudioBodyState extends State<TeachStudioBody> {
 
   AdaptationCue get _cue => AdaptationCue.parse(widget.adaptation);
 
-  String? _scriptFor(TeachStudioTab tab) {
-    switch (tab) {
-      case TeachStudioTab.explanation:
-        return widget.explanation;
-      case TeachStudioTab.example:
-        return widget.example;
-      case TeachStudioTab.interaction:
-        return widget.interaction;
-    }
-  }
-
   void _ask(String question) {
     final trimmed = question.trim();
     if (trimmed.isEmpty) return;
     setState(() {
+      _askNonce += 1;
       _activeTurn = _desk.turnFor(trimmed);
       _askController.text = _activeTurn?.question ?? trimmed;
       _askController.selection = TextSelection.collapsed(
         offset: _askController.text.length,
       );
+      _tab = TeachStudioTab.interaction;
     });
   }
 
@@ -271,17 +263,23 @@ class _TeachStudioBodyState extends State<TeachStudioBody> {
             },
             child: KeyedSubtree(
               key: ValueKey(_tab),
-              child: _tab == TeachStudioTab.interaction
-                  ? _InteractionWell(
-                      desk: _desk,
-                      active: _activeTurn,
-                      askController: _askController,
-                      onAsk: _ask,
-                    )
-                  : _ScriptPane(
-                      empty: _emptyFor(_tab),
-                      text: _scriptFor(_tab),
-                    ),
+              child: switch (_tab) {
+                TeachStudioTab.interaction => _InteractionWell(
+                    desk: _desk,
+                    active: _activeTurn,
+                    askNonce: _askNonce,
+                    askController: _askController,
+                    onAsk: _ask,
+                  ),
+                TeachStudioTab.explanation => _ExplanationPane(
+                    empty: _emptyFor(_tab),
+                    text: widget.explanation,
+                  ),
+                TeachStudioTab.example => _ScriptPane(
+                    empty: _emptyFor(_tab),
+                    text: widget.example,
+                  ),
+              },
             ),
           ),
         ),
@@ -344,16 +342,199 @@ class _ScriptPane extends StatelessWidget {
   }
 }
 
+class _ExplanationPane extends StatelessWidget {
+  const _ExplanationPane({required this.empty, required this.text});
+
+  final String empty;
+  final String? text;
+
+  @override
+  Widget build(BuildContext context) {
+    final script = ExplanationScript.parse(text);
+    if (!script.hasContent) {
+      return _ScriptPane(empty: empty, text: text);
+    }
+    return SizedBox.expand(
+      key: const ValueKey('teach-studio-explanation-pane'),
+      child: SingleChildScrollView(
+        child: Align(
+          alignment: Alignment.topLeft,
+          child: ConstrainedBox(
+            constraints: const BoxConstraints(maxWidth: 640),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                if (script.concept != null || script.level != null)
+                  Wrap(
+                    spacing: 8,
+                    runSpacing: 6,
+                    children: [
+                      if (script.concept != null)
+                        _QuietChip(label: script.concept!),
+                      if (script.level != null)
+                        _QuietChip(label: script.level!),
+                    ],
+                  ),
+                if (script.sayThis != null) ...[
+                  const SizedBox(height: 16),
+                  Text(
+                    'Say this',
+                    style: SyntraTheme.sans(
+                      color: SyntraPalette.rust,
+                      fontSize: 11,
+                      fontWeight: FontWeight.w700,
+                      letterSpacing: 0.4,
+                    ),
+                  ),
+                  const SizedBox(height: 8),
+                  Text(
+                    script.sayThis!,
+                    key: const ValueKey('teach-studio-say-this'),
+                    style: SyntraTheme.sans(
+                      color: SyntraPalette.navy,
+                      fontSize: 20,
+                      height: 1.45,
+                      fontWeight: FontWeight.w600,
+                      letterSpacing: -0.2,
+                    ),
+                  ),
+                ],
+                if (script.freeze != null) ...[
+                  const SizedBox(height: 16),
+                  DecoratedBox(
+                    key: const ValueKey('teach-studio-freeze'),
+                    decoration: BoxDecoration(
+                      color: SyntraPalette.undergraduate.withValues(alpha: 0.08),
+                      borderRadius: BorderRadius.circular(14),
+                      border: Border.all(
+                        color: SyntraPalette.undergraduate.withValues(alpha: 0.22),
+                      ),
+                    ),
+                    child: Padding(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 16,
+                        vertical: 14,
+                      ),
+                      child: Center(
+                        child: Text(
+                          script.freeze!,
+                          textAlign: TextAlign.center,
+                          style: SyntraTheme.sans(
+                            color: SyntraPalette.navy,
+                            fontSize: 20,
+                            height: 1.25,
+                            fontWeight: FontWeight.w800,
+                          ),
+                        ),
+                      ),
+                    ),
+                  ),
+                ],
+                if (script.body != null) ...[
+                  const SizedBox(height: 18),
+                  Text(
+                    script.body!,
+                    style: SyntraTheme.serif(
+                      color: SyntraPalette.ink,
+                      fontSize: 16,
+                      height: 1.55,
+                    ),
+                  ),
+                ],
+                if (script.classroomMove != null) ...[
+                  const SizedBox(height: 16),
+                  Text(
+                    script.classroomMove!,
+                    style: SyntraTheme.sans(
+                      color: SyntraPalette.sage,
+                      fontSize: 13,
+                      height: 1.4,
+                      fontWeight: FontWeight.w500,
+                    ),
+                  ),
+                ],
+                if (script.watchFor.isNotEmpty) ...[
+                  const SizedBox(height: 20),
+                  Text(
+                    'Watch for',
+                    style: SyntraTheme.sans(
+                      color: SyntraPalette.rust,
+                      fontSize: 11,
+                      fontWeight: FontWeight.w700,
+                      letterSpacing: 0.4,
+                    ),
+                  ),
+                  const SizedBox(height: 8),
+                  for (final item in script.watchFor) ...[
+                    Padding(
+                      padding: const EdgeInsets.only(bottom: 8),
+                      child: Row(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Padding(
+                            padding: const EdgeInsets.only(top: 7),
+                            child: Container(
+                              width: 6,
+                              height: 6,
+                              decoration: const BoxDecoration(
+                                color: SyntraPalette.rust,
+                                shape: BoxShape.circle,
+                              ),
+                            ),
+                          ),
+                          const SizedBox(width: 10),
+                          Expanded(
+                            child: Text(
+                              item,
+                              style: SyntraTheme.sans(
+                                color: SyntraPalette.navy,
+                                fontSize: 14,
+                                height: 1.4,
+                                fontWeight: FontWeight.w500,
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ],
+                ],
+                if (script.limits != null) ...[
+                  const SizedBox(height: 8),
+                  Text(
+                    script.limits!,
+                    style: SyntraTheme.sans(
+                      color: SyntraPalette.inkFaint,
+                      fontSize: 13,
+                      height: 1.4,
+                      fontWeight: FontWeight.w500,
+                    ),
+                  ),
+                ],
+              ],
+            )
+                .animate()
+                .fadeIn(duration: 280.ms)
+                .slideY(begin: 0.03, duration: 320.ms, curve: Curves.easeOutCubic),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
 class _InteractionWell extends StatelessWidget {
   const _InteractionWell({
     required this.desk,
     required this.active,
+    required this.askNonce,
     required this.askController,
     required this.onAsk,
   });
 
   final InteractionDesk desk;
   final InteractionTurn? active;
+  final int askNonce;
   final TextEditingController askController;
   final ValueChanged<String> onAsk;
 
@@ -399,28 +580,29 @@ class _InteractionWell extends StatelessWidget {
                       ),
                     )
                   else ...[
-                    _StudentBubble(question: active!.question)
-                        .animate(key: ValueKey('q-${active!.question}'))
+                    _StudentBubble(
+                      key: ValueKey('q-$askNonce-${active!.question}'),
+                      question: active!.question,
+                    )
+                        .animate()
                         .fadeIn(duration: 220.ms)
                         .slideX(
-                          begin: -0.08,
+                          begin: 0.08,
                           duration: 320.ms,
                           curve: Curves.easeOutCubic,
                         ),
-                    const SizedBox(height: 22),
-                    _ReplyCard(turn: active!)
-                        .animate(key: ValueKey('r-${active!.question}'))
-                        .fadeIn(delay: 120.ms, duration: 280.ms)
+                    const SizedBox(height: 16),
+                    _ReplyCard(
+                      key: ValueKey('r-$askNonce-${active!.question}'),
+                      turn: active!,
+                    )
+                        .animate()
+                        .fadeIn(delay: 80.ms, duration: 280.ms)
                         .slideY(
-                          begin: 0.08,
-                          delay: 120.ms,
-                          duration: 360.ms,
+                          begin: 0.06,
+                          delay: 80.ms,
+                          duration: 320.ms,
                           curve: Curves.easeOutCubic,
-                        )
-                        .shimmer(
-                          delay: 280.ms,
-                          duration: 1100.ms,
-                          color: SyntraPalette.rust.withValues(alpha: 0.28),
                         ),
                   ],
                 ],
@@ -438,22 +620,12 @@ class _InteractionWell extends StatelessWidget {
                       label: desk.suggestions[i],
                       selected: _same(desk.suggestions[i], active?.question),
                       onTap: () => onAsk(desk.suggestions[i]),
-                    )
-                        .animate()
-                        .fadeIn(delay: (40 * i).ms, duration: 240.ms)
-                        .slideY(
-                          begin: 0.25,
-                          delay: (40 * i).ms,
-                          duration: 260.ms,
-                        ),
+                    ),
                 ],
               ),
             ],
             const SizedBox(height: 14),
-            _AskBar(controller: askController, onSubmit: onAsk)
-                .animate()
-                .fadeIn(delay: 80.ms, duration: 240.ms)
-                .slideY(begin: 0.12, delay: 80.ms, duration: 280.ms),
+            _AskBar(controller: askController, onSubmit: onAsk),
           ],
         ),
       ),
@@ -465,34 +637,52 @@ class _InteractionWell extends StatelessWidget {
 }
 
 class _StudentBubble extends StatelessWidget {
-  const _StudentBubble({required this.question});
+  const _StudentBubble({super.key, required this.question});
 
   final String question;
 
   @override
   Widget build(BuildContext context) {
     return Align(
-      alignment: Alignment.centerLeft,
+      alignment: Alignment.centerRight,
       child: ConstrainedBox(
         constraints: const BoxConstraints(maxWidth: 480),
         child: Container(
           key: const ValueKey('teach-studio-student-question'),
-          padding: const EdgeInsets.fromLTRB(16, 14, 16, 14),
+          padding: const EdgeInsets.fromLTRB(16, 12, 16, 14),
           decoration: BoxDecoration(
-            color: SyntraPalette.voidMid,
-            borderRadius: const BorderRadius.all(Radius.circular(20)),
-            border: Border(
-              left: BorderSide(color: SyntraPalette.rust, width: 3),
+            color: SyntraPalette.navy,
+            borderRadius: const BorderRadius.only(
+              topLeft: Radius.circular(20),
+              topRight: Radius.circular(20),
+              bottomLeft: Radius.circular(20),
+              bottomRight: Radius.circular(6),
             ),
           ),
-          child: Text(
-            question,
-            style: SyntraTheme.sans(
-              color: SyntraPalette.navy,
-              fontSize: 17,
-              height: 1.35,
-              fontWeight: FontWeight.w700,
-            ),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.end,
+            children: [
+              Text(
+                'Student',
+                style: SyntraTheme.sans(
+                  color: SyntraPalette.peach,
+                  fontSize: 11,
+                  fontWeight: FontWeight.w700,
+                  letterSpacing: 0.4,
+                ),
+              ),
+              const SizedBox(height: 4),
+              Text(
+                question,
+                textAlign: TextAlign.right,
+                style: SyntraTheme.sans(
+                  color: SyntraPalette.onAccent,
+                  fontSize: 16,
+                  height: 1.35,
+                  fontWeight: FontWeight.w600,
+                ),
+              ),
+            ],
           ),
         ),
       ),
@@ -501,7 +691,7 @@ class _StudentBubble extends StatelessWidget {
 }
 
 class _ReplyCard extends StatelessWidget {
-  const _ReplyCard({required this.turn});
+  const _ReplyCard({super.key, required this.turn});
 
   final InteractionTurn turn;
 
@@ -533,7 +723,7 @@ class _ReplyCard extends StatelessWidget {
                         .fade(begin: 0.35, end: 1, duration: 900.ms),
                   ),
                   TextSpan(
-                    text: 'Interaction',
+                    text: 'SYNTRA',
                     style: SyntraTheme.sans(
                       color: SyntraPalette.rust,
                       fontSize: 11,
@@ -549,8 +739,8 @@ class _ReplyCard extends StatelessWidget {
               turn.reply,
               style: SyntraTheme.sans(
                 color: SyntraPalette.navy,
-                fontSize: 20,
-                height: 1.5,
+                fontSize: 18,
+                height: 1.45,
                 fontWeight: FontWeight.w600,
                 letterSpacing: -0.2,
               ),
@@ -601,6 +791,12 @@ class _AskBarState extends State<_AskBar> {
     super.dispose();
   }
 
+  void _send() {
+    final text = widget.controller.text.trim();
+    if (text.isEmpty) return;
+    widget.onSubmit(text);
+  }
+
   @override
   Widget build(BuildContext context) {
     final focused = _focus.hasFocus;
@@ -631,9 +827,9 @@ class _AskBarState extends State<_AskBar> {
               controller: widget.controller,
               focusNode: _focus,
               minLines: 1,
-              maxLines: 3,
+              maxLines: 1,
               textInputAction: TextInputAction.send,
-              onSubmitted: widget.onSubmit,
+              onSubmitted: (_) => _send(),
               style: SyntraTheme.sans(
                 color: SyntraPalette.navy,
                 fontSize: 15,
@@ -652,26 +848,18 @@ class _AskBarState extends State<_AskBar> {
             ),
           ),
           const SizedBox(width: 8),
-          Material(
-            color: SyntraPalette.rust,
-            shape: const CircleBorder(),
-            child: InkWell(
-              key: const ValueKey('teach-studio-ask-send'),
-              onTap: () => widget.onSubmit(widget.controller.text),
-              customBorder: const CircleBorder(),
-              child: const SizedBox(
-                width: 40,
-                height: 40,
-                child: Icon(
-                  Icons.arrow_upward_rounded,
-                  color: SyntraPalette.onAccent,
-                  size: 18,
-                ),
-              ),
+          IconButton(
+            key: const ValueKey('teach-studio-ask-send'),
+            onPressed: _send,
+            tooltip: 'Send',
+            style: IconButton.styleFrom(
+              backgroundColor: SyntraPalette.rust,
+              foregroundColor: SyntraPalette.onAccent,
+              minimumSize: const Size(44, 44),
+              tapTargetSize: MaterialTapTargetSize.padded,
             ),
-          )
-              .animate(onPlay: (c) => c.repeat(reverse: true))
-              .scaleXY(begin: 1, end: 1.06, duration: 1400.ms),
+            icon: const Icon(Icons.arrow_upward_rounded, size: 18),
+          ),
         ],
       ),
     );
@@ -1085,6 +1273,60 @@ class AdaptationCue {
   }
 }
 
+class ExplanationScript {
+  const ExplanationScript({
+    this.concept,
+    this.level,
+    this.sayThis,
+    this.body,
+    this.freeze,
+    this.classroomMove,
+    this.watchFor = const [],
+    this.limits,
+  });
+
+  final String? concept;
+  final String? level;
+  final String? sayThis;
+  final String? body;
+  final String? freeze;
+  final String? classroomMove;
+  final List<String> watchFor;
+  final String? limits;
+
+  bool get hasContent =>
+      (sayThis != null && sayThis!.isNotEmpty) ||
+      (body != null && body!.isNotEmpty) ||
+      (freeze != null && freeze!.isNotEmpty);
+
+  factory ExplanationScript.parse(String? raw) {
+    if (raw == null || raw.trim().isEmpty) {
+      return const ExplanationScript();
+    }
+    final text = raw.trim();
+    var freeze = _section(text, 'Freeze');
+    if (freeze != null) {
+      freeze = freeze.replaceAll('**', '').trim();
+      if (freeze.contains('\n')) {
+        freeze = freeze.split('\n').first.trim();
+      }
+      if (freeze.isEmpty) freeze = null;
+    }
+    final watchBlock =
+        _section(text, 'Watch for') ?? _section(text, 'Misconceptions');
+    return ExplanationScript(
+      concept: _firstLine(_section(text, 'Concept')),
+      level: _firstLine(_section(text, 'Level')),
+      sayThis: _section(text, 'Say this'),
+      body: _section(text, 'Explanation'),
+      freeze: freeze,
+      classroomMove: _section(text, 'Classroom move'),
+      watchFor: _bulletItems(watchBlock),
+      limits: _section(text, 'Limits'),
+    );
+  }
+}
+
 class InteractionTurn {
   const InteractionTurn({
     required this.question,
@@ -1114,15 +1356,23 @@ class InteractionDesk {
       'No student turn yet. Ask a question to hear the Interaction Agent.';
 
   InteractionTurn? turnFor(String question) {
-    final needle = question.trim().toLowerCase();
+    final needle = _normAsk(question);
+    if (needle.isEmpty) return null;
     for (final turn in turns) {
-      if (turn.question.trim().toLowerCase() == needle) return turn;
+      final q = _normAsk(turn.question);
+      if (q == needle || q.contains(needle) || needle.contains(q)) {
+        return InteractionTurn(
+          question: question.trim(),
+          reply: turn.reply,
+          teachingNote: turn.teachingNote,
+        );
+      }
     }
-    if (primary == null) return null;
     return InteractionTurn(
       question: question.trim(),
-      reply: primary!.reply,
-      teachingNote: primary!.teachingNote,
+      reply:
+          'Stay on this step. Ask about fetch, the zigzag, or why the spit curves. Do not jump to a new landform yet.',
+      teachingNote: 'Unmatched question. Keep them on the current sequence.',
     );
   }
 
@@ -1210,4 +1460,23 @@ String? _quotedAsk(String text) {
     dotAll: true,
   ).firstMatch(text);
   return match?.group(1)?.trim();
+}
+
+String _normAsk(String value) {
+  return value.toLowerCase().replaceAll(RegExp(r'[^a-z0-9]+'), ' ').trim();
+}
+
+String? _firstLine(String? text) {
+  if (text == null) return null;
+  final line = text.split('\n').first.trim();
+  return line.isEmpty ? null : line;
+}
+
+List<String> _bulletItems(String? block) {
+  if (block == null || block.trim().isEmpty) return const [];
+  return [
+    for (final line in block.split('\n'))
+      if (line.trim().isNotEmpty)
+        line.trim().replaceFirst(RegExp(r'^[-*]\s*'), '').trim(),
+  ];
 }

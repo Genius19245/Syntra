@@ -31,4 +31,4 @@ RUN rm -rf /app/backend/curriculum_agent/learning_objectives_agent && \
     ln -s ../learning_objectives_agent /app/backend/curriculum_agent/learning_objectives_agent
 
 EXPOSE 8080
-CMD ["adk", "api_server", "--port=8080", "--host=0.0.0.0", "--otel_to_cloud", "--session_service_uri=memory://", "--artifact_service_uri=memory://", "--allow_origins=regex:http://localhost:[0-9]+", "--allow_origins=regex:http://127\\.0\\.0\\.1:[0-9]+", "/app/backend"]
+CMD ["adk", "api_server", "--port=8080", "--host=0.0.0.0", "--otel_to_cloud", "--session_service_uri=memory://", "--artifact_service_uri=memory://", "--allow_origins=https://syntra-studio.web.app", "--allow_origins=https://syntra-studio.firebaseapp.com", "--allow_origins=regex:http://localhost:[0-9]+", "--allow_origins=regex:http://127\\.0\\.0\\.1:[0-9]+", "/app/backend"]

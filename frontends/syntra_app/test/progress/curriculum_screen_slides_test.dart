@@ -149,6 +149,7 @@ void main() {
     expect(find.text('Slide 1 / 2'), findsOneWidget);
     expect(find.text('SAY THIS'), findsOneWidget);
     expect(find.text('Move the magnet.'), findsOneWidget);
+    expect(find.byKey(const ValueKey('download-slides')), findsOneWidget);
     expect(
       find.text(
         'Explain how a changing magnetic flux produces an induced electromotive force.',

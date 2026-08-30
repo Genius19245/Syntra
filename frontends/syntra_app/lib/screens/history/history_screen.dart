@@ -3,6 +3,7 @@ import 'dart:convert';
 import 'package:flutter/material.dart';
 
 import '../../auth/auth_service.dart';
+import '../../debug/mock_lesson.dart';
 import '../../history/lesson_record.dart';
 import '../../history/lesson_store.dart';
 import '../../progress/models.dart';
@@ -39,7 +40,8 @@ class _HistoryScreenState extends State<HistoryScreen> {
   @override
   void didChangeDependencies() {
     super.didChangeDependencies();
-    final next = AuthScope.maybeOf(context)?.historyNamespace ??
+    final next =
+        AuthScope.maybeOf(context)?.historyNamespace ??
         AuthService.guestNamespace;
     if (!_ready || next != _namespace) {
       _ready = true;
@@ -55,6 +57,7 @@ class _HistoryScreenState extends State<HistoryScreen> {
   }
 
   Future<void> _load() async {
+    await _store.ensureSample(mockLessonRecord(), namespace: _namespace);
     final lessons = await _store.loadAll(namespace: _namespace);
     if (!mounted) return;
     setState(() {
@@ -68,13 +71,13 @@ class _HistoryScreenState extends State<HistoryScreen> {
       PageRouteBuilder(
         pageBuilder: (context, animation, secondaryAnimation) =>
             CurriculumScreen(
-          brief: record.toBrief(),
-          markdown: record.markdown,
-          origin: record.researchOrigin,
-          originBadge: record.originBadge,
-          fromHistory: true,
-          pipeline: _pipelineFrom(record),
-        ),
+              brief: record.toBrief(),
+              markdown: record.markdown,
+              origin: record.researchOrigin,
+              originBadge: record.originBadge,
+              fromHistory: true,
+              pipeline: _pipelineFrom(record),
+            ),
         transitionsBuilder: (context, animation, secondaryAnimation, child) {
           return FadeTransition(opacity: animation, child: child);
         },
@@ -125,34 +128,33 @@ class _HistoryScreenState extends State<HistoryScreen> {
                 Expanded(
                   child: _loading
                       ? const Center(
-                          child: CircularProgressIndicator(
-                            color: accent,
-                          ),
+                          child: CircularProgressIndicator(color: accent),
                         )
                       : _lessons.isEmpty
-                          ? const _EmptyHistory()
-                          : ListView.separated(
-                              itemCount: _lessons.length,
-                              separatorBuilder: (context, index) =>
-                                  const SizedBox(height: 12),
-                              itemBuilder: (context, index) {
-                                final record = _lessons[index];
-                                return _HistoryTile(
-                                  record: record,
-                                  onOpen: () => _open(record),
-                                  onRunAgain: () {
-                                    Navigator.of(context).push(
-                                      PageRouteBuilder(
-                                        pageBuilder: (
+                      ? const _EmptyHistory()
+                      : ListView.separated(
+                          itemCount: _lessons.length,
+                          separatorBuilder: (context, index) =>
+                              const SizedBox(height: 12),
+                          itemBuilder: (context, index) {
+                            final record = _lessons[index];
+                            return _HistoryTile(
+                              record: record,
+                              onOpen: () => _open(record),
+                              onRunAgain: () {
+                                Navigator.of(context).push(
+                                  PageRouteBuilder(
+                                    pageBuilder:
+                                        (
                                           context,
                                           animation,
                                           secondaryAnimation,
-                                        ) =>
-                                            AgentRunScreen(
+                                        ) => AgentRunScreen(
                                           brief: record.toBrief(),
                                           fromHistory: true,
                                         ),
-                                        transitionsBuilder: (
+                                    transitionsBuilder:
+                                        (
                                           context,
                                           animation,
                                           secondaryAnimation,
@@ -163,12 +165,12 @@ class _HistoryScreenState extends State<HistoryScreen> {
                                             child: child,
                                           );
                                         },
-                                      ),
-                                    );
-                                  },
+                                  ),
                                 );
                               },
-                            ),
+                            );
+                          },
+                        ),
                 ),
               ],
             ),
@@ -327,8 +329,8 @@ PipelineTexts? _pipelineFrom(LessonRecord record) {
     curriculum: record.markdown,
     lessonPlan: _payloadText(teacher?['lessonPlan']),
     slides: _payloadText(teacher?['slides']),
-    assessment: _payloadText(quiz?['markdown']) ??
-        _payloadText(teacher?['assessment']),
+    assessment:
+        _payloadText(quiz?['markdown']) ?? _payloadText(teacher?['assessment']),
     knownKnowledge: _payloadText(teacher?['knownKnowledge']),
     researchPackage: _payloadText(teacher?['researchPackage']),
     explanation: _payloadText(teacher?['explanation']),

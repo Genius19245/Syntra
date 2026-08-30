@@ -11,6 +11,8 @@ MAX_MISCONCEPTIONS = 4
 MAX_LESSON_STEPS = 3
 MAX_PREREQUISITES = 6
 MAX_KEY_CONCEPTS = 8
+MAX_SLIDES = 2
+MAX_SLIDE_BULLETS = 4
 _STOP = frozenset(
     {
         "the",
@@ -33,6 +35,38 @@ _STOP = frozenset(
         "that",
         "this",
         "it",
+    }
+)
+_GENERIC_CONCEPT_TOKENS = frozenset(
+    {
+        "wave",
+        "waves",
+        "energy",
+        "force",
+        "change",
+        "process",
+        "form",
+        "land",
+        "sea",
+        "water",
+        "rock",
+        "field",
+        "current",
+        "light",
+        "heat",
+        "mass",
+        "time",
+        "speed",
+        "rate",
+        "level",
+        "type",
+        "part",
+        "side",
+        "high",
+        "low",
+        "open",
+        "coast",
+        "coastal",
     }
 )
 _WORD_RE = re.compile(r"[a-z0-9]+(?:'[a-z]+)?", re.IGNORECASE)
@@ -111,9 +145,10 @@ _BAND_GUIDANCE: dict[str, dict[str, Any]] = {
         "prefer_analogies": True,
         "max_bloom": "Analysis",
         "style": (
-            "Exam-board terms, one simple equation if it is in the "
-            "verified material, and a worked qualitative example. "
-            "No undergraduate formalism."
+            "Exam-board terms. Definition, then mechanism, then one "
+            "freeze line — a simple equation if it is in the verified "
+            "material, otherwise one cause sentence. Stop before the "
+            "next concept. No undergraduate formalism."
         ),
     },
     "a_level": {
@@ -183,6 +218,19 @@ def _tokens(text: str) -> set[str]:
     }
 
 
+def _distinctive_tokens(concept_tokens: set[str]) -> set[str]:
+    distinctive = {token for token in concept_tokens if token not in _GENERIC_CONCEPT_TOKENS}
+    return distinctive or set(concept_tokens)
+
+
+def _equation_text(value: Any) -> str:
+    if isinstance(value, dict):
+        return _normalise(
+            value.get("equation") or value.get("latex") or value.get("text")
+        )
+    return _normalise(value)
+
+
 def _as_data(value: Any) -> Any:
     if value is None:
         return None
@@ -242,6 +290,28 @@ def _score_text(text: str, concept_lower: str, concept_tokens: set[str]) -> int:
     return overlap * 12 if overlap else 0
 
 
+def _score_focused(
+    text: str,
+    concept_lower: str,
+    concept_tokens: set[str],
+    distinctive: set[str],
+) -> int:
+    """Score a short string only when it is about this concept, not a neighbour."""
+
+    score = _score_text(text, concept_lower, concept_tokens)
+    if not score:
+        return 0
+    lowered = _normalise(text).lower()
+    if concept_lower and (concept_lower in lowered or lowered in concept_lower):
+        return score
+    text_tokens = _tokens(text)
+    if text_tokens and text_tokens <= concept_tokens:
+        return score
+    if distinctive and not distinctive.intersection(text_tokens):
+        return 0
+    return score
+
+
 def _compact_claim(item: dict[str, Any]) -> dict[str, Any]:
     verification = item.get("verification")
     verdict = ""
@@ -289,7 +359,11 @@ def _collect_claims(
 
 
 def _matching_strings(
-    values: Any, concept_lower: str, concept_tokens: set[str], limit: int
+    values: Any,
+    concept_lower: str,
+    concept_tokens: set[str],
+    limit: int,
+    distinctive: set[str] | None = None,
 ) -> list[str]:
     matches: list[tuple[int, str]] = []
     seen: set[str] = set()
@@ -298,7 +372,10 @@ def _matching_strings(
         key = text.lower()
         if not text or key in seen:
             continue
-        score = _score_text(text, concept_lower, concept_tokens)
+        if distinctive is None:
+            score = _score_text(text, concept_lower, concept_tokens)
+        else:
+            score = _score_focused(text, concept_lower, concept_tokens, distinctive)
         if not score:
             continue
         seen.add(key)
@@ -377,11 +454,61 @@ def _prerequisites(
     return _matching_strings(flat, concept_lower, concept_tokens, MAX_PREREQUISITES)
 
 
+def _matching_slides(
+    slides: Any, concept_lower: str, concept_tokens: set[str]
+) -> list[dict[str, Any]]:
+    data = _as_data(slides)
+    if isinstance(data, dict):
+        sequence = data.get("slides") or data.get("slide_plan") or []
+    elif isinstance(data, list):
+        sequence = data
+    else:
+        return []
+    scored: list[tuple[int, dict[str, Any]]] = []
+    for raw in sequence:
+        if not isinstance(raw, dict):
+            continue
+        content = raw.get("content") or []
+        bullets = (
+            [_normalise(item) for item in content if _normalise(item)]
+            if isinstance(content, list)
+            else []
+        )
+        equation = _equation_text(raw.get("equation"))
+        blob = " ".join(
+            [
+                _normalise(raw.get("title")),
+                _normalise(raw.get("purpose")),
+                _normalise(raw.get("teacher_explanation")),
+                equation,
+                " ".join(bullets),
+            ]
+        )
+        score = _score_text(blob, concept_lower, concept_tokens)
+        if not score:
+            continue
+        scored.append(
+            (
+                score,
+                {
+                    "title": _normalise(raw.get("title")) or None,
+                    "teacher_explanation": _normalise(raw.get("teacher_explanation"))
+                    or None,
+                    "equation": equation or None,
+                    "content": bullets[:MAX_SLIDE_BULLETS],
+                },
+            )
+        )
+    scored.sort(key=lambda item: item[0], reverse=True)
+    return [item for _, item in scored[:MAX_SLIDES]]
+
+
 def match_concept_context(
     concept: str,
     research_package: Any = None,
     lesson_plan: Any = None,
     prerequisite_analysis: Any = None,
+    slides: Any = None,
 ) -> dict[str, Any]:
     """Return compact verified excerpts for one concept. Does not explain."""
 
@@ -396,6 +523,7 @@ def match_concept_context(
 
     concept_lower = cleaned.lower()
     concept_tokens = _tokens(cleaned)
+    distinctive = _distinctive_tokens(concept_tokens)
     package = _as_data(research_package)
     claims = _collect_claims(package, concept_lower, concept_tokens)
     misconceptions = _matching_strings(
@@ -403,22 +531,34 @@ def match_concept_context(
         concept_lower,
         concept_tokens,
         MAX_MISCONCEPTIONS,
+        distinctive=distinctive,
     )
     key_concepts = _matching_strings(
         package.get("key_concepts") if isinstance(package, dict) else None,
         concept_lower,
         concept_tokens,
         MAX_KEY_CONCEPTS,
+        distinctive=distinctive,
     )
     lesson_steps = _lesson_steps(lesson_plan, concept_lower, concept_tokens)
     prerequisites = _prerequisites(prerequisite_analysis, concept_lower, concept_tokens)
+    matching_slides = _matching_slides(slides, concept_lower, concept_tokens)
     match_count = (
         len(claims)
         + len(misconceptions)
         + len(key_concepts)
         + len(lesson_steps)
         + len(prerequisites)
+        + len(matching_slides)
     )
+    empty = {
+        "claims": [],
+        "misconceptions": [],
+        "key_concepts": [],
+        "lesson_steps": [],
+        "prerequisites": [],
+        "slides": [],
+    }
     if match_count == 0:
         return {
             "status": "not_found",
@@ -428,11 +568,7 @@ def match_concept_context(
             ),
             "concept": cleaned,
             "match_count": 0,
-            "claims": [],
-            "misconceptions": [],
-            "key_concepts": [],
-            "lesson_steps": [],
-            "prerequisites": [],
+            **empty,
         }
     return {
         "status": "success",
@@ -443,6 +579,7 @@ def match_concept_context(
         "key_concepts": key_concepts,
         "lesson_steps": lesson_steps,
         "prerequisites": prerequisites,
+        "slides": matching_slides,
     }
 
 
@@ -453,14 +590,19 @@ def retrieve_concept_context(
     """
     Pull compact verified excerpts for one concept from session state.
 
-    Reads research_package, lesson_plan, and prerequisite_analysis.
+    Reads research_package, lesson_plan, prerequisite_analysis, and slides.
     Does not return the full package and does not write the explanation.
     """
 
     state = _session_state(tool_context)
     if not any(
         state.get(key)
-        for key in ("research_package", "lesson_plan", "prerequisite_analysis")
+        for key in (
+            "research_package",
+            "lesson_plan",
+            "prerequisite_analysis",
+            "slides",
+        )
     ):
         return {
             "status": "error",
@@ -473,6 +615,7 @@ def retrieve_concept_context(
         research_package=state.get("research_package"),
         lesson_plan=state.get("lesson_plan"),
         prerequisite_analysis=state.get("prerequisite_analysis"),
+        slides=state.get("slides"),
     )
 
 

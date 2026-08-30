@@ -81,6 +81,17 @@ class LessonStore extends ChangeNotifier {
     notifyListeners();
   }
 
+  Future<void> ensureSample(
+    LessonRecord sample, {
+    String namespace = AuthService.guestNamespace,
+  }) async {
+    try {
+      final existing = await loadAll(namespace: namespace);
+      if (existing.any((item) => item.id == sample.id)) return;
+      await save(sample, namespace: namespace);
+    } catch (_) {}
+  }
+
   /// Local write of an already-produced curriculum. Does not re-run the pipeline.
   Future<LessonRecord> saveProducedLesson({
     required LearnerBrief brief,

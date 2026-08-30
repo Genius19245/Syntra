@@ -291,10 +291,84 @@ stage.addEventListener("click", () => {
   }
 });
 
-loop(generation);
+function freezeStudio() {
+  resetStudio();
+  showScreen("studio");
+  tiles.forEach((tile) => tile.classList.add("on"));
+  tiles[2].classList.add("selected");
+  dossier.classList.add("on");
+  pills.forEach((pill) => pill.classList.add("on"));
+  boardBlock.classList.add("open");
+  subjectBlock.classList.add("open");
+  boards[0].classList.add("on");
+  subjects[5].classList.add("on");
+  topicField.classList.add("hot");
+  topicText.textContent = "Coastal landscapes";
+  fillDossier(
+    "Coastal landscapes",
+    ["Geography", "GCSE", "AQA"],
+    "Prepare for an exam",
+    "GCSE",
+    "Waves transfer energy; beaches from photos",
+    true,
+  );
+  navCta.textContent = "Write lesson";
+}
 
-if (hint) {
-  window.setTimeout(() => {
-    hint.style.opacity = "0";
-  }, 3600);
+function freezeRun() {
+  resetRun();
+  showScreen("run");
+  const done = new Set(["label", "cache", "profile"]);
+  pipeline.forEach((item) => {
+    const step = item.dataset.step;
+    item.classList.remove("active", "done", "skip");
+    if (step === "web") item.classList.add("skip");
+    else if (done.has(step)) item.classList.add("done");
+    else if (step === "prereq") item.classList.add("active");
+  });
+  document.getElementById("run-sub").textContent =
+    "Reused from SYNTRA cache (14 hits) — skipping live web research.";
+  document.getElementById("live-title").textContent = "Prerequisites";
+  document.getElementById("live-body").textContent =
+    "Gaps: weathering vs erosion, reading a simple OS coastline extract.";
+  document.getElementById("live-bar").classList.add("on");
+}
+
+function freezeTeach() {
+  resetTeach();
+  showScreen("teach");
+  document.querySelectorAll(".slide").forEach((slide, i) => slide.classList.toggle("on", i === 1));
+  document.getElementById("slide-count").textContent = "Slide 2 / 3";
+  document.getElementById("say-this").textContent = notes[1];
+}
+
+function freezeShot(id) {
+  document.body.classList.add("recording");
+  if (hint) hint.remove();
+  generation += 1;
+  window.clearTimeout(timer);
+
+  if (id === "mark" || id === "name" || id === "hold") {
+    showScene(id);
+    return;
+  }
+
+  showScene("app");
+  app.classList.add("on");
+  if (id === "studio") freezeStudio();
+  else if (id === "run") freezeRun();
+  else if (id === "teach") freezeTeach();
+  else showScreen(id);
+}
+
+const shot = new URLSearchParams(location.search).get("shot");
+if (shot) {
+  freezeShot(shot);
+} else {
+  loop(generation);
+  if (hint) {
+    window.setTimeout(() => {
+      hint.style.opacity = "0";
+    }, 3600);
+  }
 }

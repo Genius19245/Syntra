@@ -197,5 +197,45 @@ void main() {
     expect(find.text("Faraday's law"), findsOneWidget);
     expect(find.text('E = - dNΦ / dt'), findsOneWidget);
     expect(find.text('Slide 2 / 2'), findsOneWidget);
+    expect(find.textContaining('Fig '), findsNothing);
+  });
+
+  testWidgets('renders a two-column comparison on the board', (tester) async {
+    final deck = SlideDeck.tryParse('''
+{
+  "lesson_title": "Coastal landscapes",
+  "slides": [
+    {
+      "slide_number": 1,
+      "title": "Constructive vs destructive waves",
+      "content": [
+        "Constructive: Strong swash, weak backwash. The beach builds.",
+        "Destructive: Weak swash, strong backwash. The beach is stripped."
+      ],
+      "visual_type": "comparison",
+      "difficulty": "developing",
+      "estimated_minutes": 5
+    }
+  ]
+}
+''')!;
+    expect(deck.slides.single.usesInlineBoard, isTrue);
+    await tester.pumpWidget(
+      MaterialApp(
+        home: Scaffold(
+          body: SizedBox(
+            height: 720,
+            width: 980,
+            child: SlidePanel(deck: deck),
+          ),
+        ),
+      ),
+    );
+
+    expect(find.text('Constructive vs destructive waves'), findsOneWidget);
+    expect(find.byKey(const ValueKey('slide-comparison')), findsOneWidget);
+    expect(find.text('Constructive'), findsOneWidget);
+    expect(find.text('Destructive'), findsOneWidget);
+    expect(find.textContaining('Fig '), findsNothing);
   });
 }

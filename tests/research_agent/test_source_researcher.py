@@ -1,17 +1,46 @@
+import asyncio
 import inspect
 import re
+from types import SimpleNamespace
 
+import pytest
+from google.adk.agents.readonly_context import ReadonlyContext
+from google.adk.utils.instructions_utils import inject_session_state
 from research_agent.source_researcher.agent import source_researcher
 from research_agent.source_researcher.tools import gather_sources
 
 
-def test_instruction_escapes_adk_template_braces():
+def _empty_session_context() -> ReadonlyContext:
+    return ReadonlyContext(SimpleNamespace(session=SimpleNamespace(state={})))
+
+
+def test_adk_treats_double_braces_as_required_session_keys():
+    """Regression lock: ADK's regex treats {{topic}} as required `topic`."""
+    ctx = _empty_session_context()
+    with pytest.raises(KeyError, match="topic"):
+        asyncio.run(inject_session_state("{{topic}} example", ctx))
+
+
+def test_instruction_renders_when_session_has_no_topic():
     instruction = source_researcher.instruction
-    assert "{{topic}}" in instruction
-    assert "{{level}}" in instruction
-    unescaped = re.findall(r"(?<!\{)\{([^{}]+)\}(?!\})", instruction)
-    assert "topic" not in unescaped
-    assert "level" not in unescaped
+    assert "{{topic}}" not in instruction
+    assert "{topic}" not in instruction
+    assert "<topic>" in instruction
+    rendered = asyncio.run(
+        inject_session_state(instruction, _empty_session_context())
+    )
+    assert "gather_sources" in rendered
+    assert "{topic}" not in rendered
+
+
+def test_nested_research_nodes_render_without_session_topic():
+    from research_agent.fact_checker.agent import fact_checker
+
+    ctx = _empty_session_context()
+    for agent in (source_researcher, fact_checker):
+        instruction = agent.instruction
+        assert isinstance(instruction, str)
+        asyncio.run(inject_session_state(instruction, ctx))
 
 
 def test_instruction_batches_gather_sources_in_one_turn():

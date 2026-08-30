@@ -9,5 +9,5 @@ import 'mock_lesson.dart';
 /// ```
 void main() {
   WidgetsFlutterBinding.ensureInitialized();
-  runApp(mockTeachApp());
+    runApp(mockCurriculumApp());
 }

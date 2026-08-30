@@ -26,6 +26,11 @@ void main() {
     expect(deck!.lessonTitle, mockTopic);
     expect(deck.slides.length, inInclusiveRange(6, 10));
     expect(deck.slides.first.title, 'Coasts are energy, rock, and sediment');
+    expect(deck.slides[1].title, 'Wave energy tracks fetch');
+    expect(deck.slides[1].equation, 'Wave energy ∝ fetch × wind speed');
+    expect(deck.slides[1].content, hasLength(2));
+    expect(deck.slides[2].title, 'Constructive vs destructive waves');
+    expect(deck.slides[2].visualType, 'comparison');
     expect(
       deck.slides.where((slide) => slide.teacherExplanation.isNotEmpty).length,
       greaterThanOrEqualTo(6),
@@ -44,7 +49,7 @@ void main() {
     );
     expect(
       deck.slides.any(
-        (slide) => slide.visualAsset != null && !slide.visualAsset!.ready,
+        (slide) => slide.visualAsset != null && slide.visualAsset!.ready,
       ),
       isTrue,
     );
@@ -128,6 +133,8 @@ void main() {
       find.textContaining('Hold the three photos'),
       findsOneWidget,
     );
+    expect(find.byKey(const ValueKey('download-slides')), findsOneWidget);
+    expect(find.text('Download slides'), findsOneWidget);
 
     await tester.tap(find.byKey(const ValueKey('teaching-pack-sequence')));
     await tester.pump();
@@ -136,6 +143,53 @@ void main() {
     expect(find.text('Activate: what is a coastline doing?'), findsOneWidget);
     expect(find.textContaining('5 min'), findsWidgets);
     expect(find.text('Coasts are energy, rock, and sediment'), findsNothing);
+  });
+
+  testWidgets('CurriculumScreen shows fetch equation and comparison slides',
+      (tester) async {
+    tester.view.physicalSize = const Size(1280, 960);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.resetPhysicalSize);
+    addTearDown(tester.view.resetDevicePixelRatio);
+
+    final brief = mockBrief();
+    final pipeline = mockPipeline();
+    await tester.pumpWidget(
+      MaterialApp(
+        home: CurriculumScreen(
+          brief: brief,
+          markdown: pipeline.curriculum!,
+          origin: mockOrigin(),
+          pipeline: pipeline,
+        ),
+      ),
+    );
+    await tester.pump();
+
+    await tester.tap(find.byIcon(Icons.chevron_right_rounded));
+    await tester.pump();
+    expect(find.text('Wave energy tracks fetch'), findsOneWidget);
+    expect(find.text('Wave energy ∝ fetch × wind speed'), findsOneWidget);
+    expect(
+      find.text('Fetch is the unbroken distance wind blows over water.'),
+      findsOneWidget,
+    );
+    expect(find.textContaining('Fig '), findsNothing);
+
+    await tester.tap(find.byIcon(Icons.chevron_right_rounded));
+    await tester.pump();
+    expect(find.text('Constructive vs destructive waves'), findsOneWidget);
+    expect(find.byKey(const ValueKey('slide-comparison')), findsOneWidget);
+    expect(find.text('Constructive'), findsOneWidget);
+    expect(find.text('Destructive'), findsOneWidget);
+    expect(
+      find.text('Strong swash, weak backwash. The beach builds.'),
+      findsOneWidget,
+    );
+
+    await tester.tap(find.byIcon(Icons.chevron_right_rounded));
+    await tester.pump();
+    expect(find.text('Longshore drift is a zigzag'), findsOneWidget);
   });
 
   testWidgets('TeachScreen shows mock explanation, example, and interaction well',
@@ -176,6 +230,12 @@ void main() {
       find.textContaining('Fetch is the unbroken stretch of water'),
       findsOneWidget,
     );
+    expect(find.byKey(const ValueKey('teach-studio-say-this')), findsOneWidget);
+    expect(find.byKey(const ValueKey('teach-studio-freeze')), findsOneWidget);
+    expect(find.text('Wave energy ∝ fetch × wind speed'), findsOneWidget);
+    expect(find.text('Watch for'), findsOneWidget);
+    expect(find.textContaining('how windy it is'), findsOneWidget);
+    expect(find.textContaining('A tall wave is automatically'), findsNothing);
 
     await tester.tap(find.byKey(const ValueKey('teach-studio-tab-example')));
     await tester.pump();
@@ -206,6 +266,23 @@ void main() {
     await tester.pump(const Duration(milliseconds: 450));
     expect(
       find.textContaining('Fetch is the unbroken stretch of water the wind blows over'),
+      findsOneWidget,
+    );
+
+    await tester.enterText(
+      find.byKey(const ValueKey('teach-studio-ask-field')),
+      "Why haven't we named a spit yet?",
+    );
+    await tester.tap(find.byKey(const ValueKey('teach-studio-ask-send')));
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 450));
+    expect(find.byKey(const ValueKey('teach-studio-student-question')), findsOneWidget);
+    expect(
+      find.textContaining("Why haven't we named a spit yet?"),
+      findsWidgets,
+    );
+    expect(
+      find.textContaining('weathering versus erosion is not solid yet'),
       findsOneWidget,
     );
   });

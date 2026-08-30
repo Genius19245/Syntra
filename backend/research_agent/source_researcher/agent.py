@@ -34,7 +34,7 @@ When you need external information:
    gather_sources call. Do not invent a long extra query list.
 2. If no queries were supplied, derive at most 4 from the topic,
    stated level, and named exam board. Example shape:
-   "{{topic}} {{level}} {{exam board if named}} curriculum"
+   "<topic> <level> <exam board if named> curriculum"
    Never query for empirical research, neurodevelopment,
    meta-analyses, or "the literature" unless the brief is
    postgraduate.

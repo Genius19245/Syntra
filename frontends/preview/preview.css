@@ -29,6 +29,7 @@ html, body {
 button { font: inherit; }
 
 body.recording .hint { opacity: 0; }
+body.recording .blob { animation: none; }
 
 .mesh { position: fixed; inset: 0; pointer-events: none; z-index: 0; }
 
